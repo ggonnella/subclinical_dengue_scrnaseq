@@ -1,0 +1,7 @@
+data/
+*.Rdata
+*.rds
+*_files
+*.sw*
+*.knit.md
+rundir/
