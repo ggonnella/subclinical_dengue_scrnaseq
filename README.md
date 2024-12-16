@@ -35,7 +35,7 @@ Thereby:
 
 Each step is named as follows
 ``stepnumber.versionnumber.type.celltype.description``
-using the following regular expression:
+matching the following regular expression:
 ``(\d\d\d)\.(\d)\.([PV])\.([BT])\.(.*)``
 
 where:
