@@ -5,3 +5,5 @@ data/
 *.sw*
 *.knit.md
 rundir/
+._.DS_Store
+.DS_Store
