@@ -1,0 +1,216 @@
+---
+title: "InDen Project | B cells | Clustering resolutions comparison"
+author: "Giorgio Gonnella"
+date: 2024-04-30
+output:
+  html_document:
+    theme: sandstone
+params:
+  pfx: "/srv/baia/"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE, warning = FALSE, comment = FALSE, echo = TRUE)
+
+library(Seurat)
+library(viridis)
+library(ggplot2)
+library(ggrepel)
+library(ggExtra)
+library(gplots)
+library(RColorBrewer)
+library(reshape2)
+library(ggsci)
+library(dplyr)
+library(mclust)
+
+prj_root <- paste0(params$pfx, "inden/")
+analysis_root <- paste0(prj_root, "analysis-1/")
+
+input_step_dir <- paste0(analysis_root, "steps/106.0.P.B.merging.seurat/")
+var_dir <- paste0(input_step_dir, "results/vars/")
+```
+
+```{r load, echo=F}
+so <- readRDS(paste0(var_dir, "merged_so.rds"))
+sample_cols <- colorRampPalette(brewer.pal(8, name = "Accent"))(
+                  length(unique(so$orig.ident)))
+```
+
+## Clustering
+
+Comparison of clustering at different resolutions
+
+```{r umap_clustering, fig.align="center", fig.width=12, fig.height=6, echo=F}
+cl_cols <- colorRampPalette(brewer.pal(9, name = "Set1"))(length(unique(so$RNA_snn_res.1.2)))
+for(g.b in grep("^RNA_snn_res", colnames(so@meta.data), value = TRUE)){
+  res <- gsub("RNA_snn_res.", "", g.b)
+  print(DimPlot(object = so, reduction = "umap",
+          group.by = g.b, label = TRUE, cols = cl_cols))
+  print(VlnPlot(object = so, features = c("nCount_RNA",
+         "nFeature_RNA", "percent.mito"), group.by = g.b, cols = cl_cols))
+  sample_vs_cl <- as.data.frame(
+    round(prop.table(table(so@meta.data[[g.b]],
+                           so$orig.ident), margin = 1)*100,
+          digits = 2)
+  )
+  colnames(sample_vs_cl)[1:2] <- c("Seurat_Cl", "Sampleid")
+  levels(sample_vs_cl$Seurat_Cl) <-
+    paste("Cl", levels(sample_vs_cl$Seurat_Cl), sep = "_")
+  print(ggplot(sample_vs_cl, aes(x = Seurat_Cl, y = Freq, fill = Sampleid))+
+    geom_bar(stat = "identity", alpha = .98)+
+    coord_flip()+
+    theme_minimal()+
+    scale_fill_manual(values = sample_cols))
+  print(ggplot() +
+        geom_hline(yintercept = 0.5) +  # Customize line here
+        theme_void()  # Use theme_void to remove all axes, grid lines, and background
+)
+}
+```
+
+## Cell types by cluster
+
+### Adjusted Rand Index
+
+We used the Adjusted Rand Index, computed using the mclust library, to
+compare two partitions, in this case the single R assignments and the
+unsupervised clustering. The value is zero for two random partitions and
+one for perfect agreement betweeen the partitions.
+
+```{r adj_rand_idx, echo=F}
+ari <- data.frame(Resolution = numeric(), ARI_Value_fine = numeric(),
+                  ARI_Value_main = numeric(), stringsAsFactors = FALSE)
+for(g.b in grep("^RNA_snn_res", colnames(so@meta.data),
+                value = TRUE)){
+  ari_value_f <- adjustedRandIndex(so$pruned.labels_singleR_fine,
+                                  so@meta.data[[g.b]])
+  ari_value_m <- adjustedRandIndex(so$pruned.labels_singleR_main,
+                                  so@meta.data[[g.b]])
+  res <- gsub("RNA_snn_res.", "", g.b)
+  ari <- rbind(ari, data.frame(Resolution = res, ARI_Value_fine = ari_value_f,
+                               ARI_Value_main = ari_value_m))
+}
+knitr::kable(ari)
+```
+
+### Weighted average cluster purity
+
+We computed the cluster purity of each cluster as number of cells in the
+most frequent cell type assignment divided by the total number of cells
+of the cluster. We then computed an average of the cluster purity values
+for all cluster, weighted by the cluster size.
+
+```{r cluster_purity, echo=F}
+purity <- data.frame(Resolution = numeric(), Purity = numeric(), stringsAsFactors = FALSE)
+for(g.b in grep("^RNA_snn_res", colnames(so@meta.data),
+                value = TRUE)){
+  cluster_cell_types <- data.frame(
+    Cluster = so@meta.data[[g.b]],
+    Cell_Type_f = so$pruned.labels_singleR_fine,
+    Cell_Type_m = so$pruned.labels_singleR_main
+  )
+
+  cluster_purity_details <- cluster_cell_types %>%
+    group_by(Cluster) %>%
+    count(Cell_Type_f) %>%
+    mutate(TotalCells = sum(n)) %>%
+    arrange(desc(n)) %>%
+    slice(1) %>%
+    ungroup() %>%
+    mutate(Purity = n / TotalCells)
+
+  overall_purity_f <- sum(cluster_purity_details$Purity *
+                      cluster_purity_details$TotalCells) /
+                  sum(cluster_purity_details$TotalCells)
+
+  cluster_purity_details <- cluster_cell_types %>%
+    group_by(Cluster) %>%
+    count(Cell_Type_m) %>%
+    mutate(TotalCells = sum(n)) %>%
+    arrange(desc(n)) %>%
+    slice(1) %>%
+    ungroup() %>%
+    mutate(Purity = n / TotalCells)
+
+  overall_purity_m <- sum(cluster_purity_details$Purity *
+                      cluster_purity_details$TotalCells) /
+                  sum(cluster_purity_details$TotalCells)
+
+  res <- gsub("RNA_snn_res.", "", g.b)
+  purity <- rbind(purity, data.frame(Resolution = res,
+                                     Purity_m = overall_purity_m,
+                                     Purity_f = overall_purity_f))
+}
+knitr::kable(purity)
+```
+
+### Tables
+
+SingleR assignments by cluster at different clustering resolutions.
+
+```{r singleR_vs_clustering_tables, fig.width=12, fig.height=6, results="asis", echo=F}
+for(g.b in grep("^RNA_snn_res", colnames(so@meta.data), value = TRUE)){
+  res = gsub("RNA_snn_res.", "", g.b)
+  cat("### Resolution : ", res, "\n")
+  print(knitr::kable(as.data.frame.matrix(table(so@meta.data[[g.b]], so$pruned.labels_singleR_fine))))
+  print(knitr::kable(as.data.frame.matrix(addmargins(round(prop.table(table(so@meta.data[[g.b]], so$pruned.labels_singleR_fine), margin = 1)*100, digits = 2), margin = 2))))
+  print(knitr::kable(as.data.frame.matrix(addmargins(round(prop.table(table(so$pruned.labels_singleR_fine, so@meta.data[[g.b]]), margin = 1)*100, digits = 2), margin = 2))))
+}
+```
+
+### Plots
+
+SingleR assignments by cluster at different clustering resolutions (same data as above visualized as barplots).
+
+```{r singleR_vs_clustering_plots, fig.width=12, fig.height=6, echo=F}
+for(g.b in grep("^RNA_snn_res", colnames(so@meta.data), value = TRUE)){
+  res = gsub("RNA_snn_res.", "", g.b)
+  cat("Resolution : ", res, "\n")
+  df <- as.data.frame(round(prop.table(table(so@meta.data[[g.b]], so$pruned.labels_singleR_fine), margin = 2)*100, digits = 2))
+  colnames(df) <- c("cluster", "cell_type", "percentage")
+  print(ggplot(df, aes(x = cell_type, y = percentage))+
+  geom_bar(stat = "identity", aes(fill = cluster))+
+  theme_bw()+
+  coord_flip()+
+  scale_x_discrete(limits = rev(levels(df$cell_type))))
+  df2 <- as.data.frame(round(prop.table(table(so$pruned.labels_singleR_fine, so@meta.data[[g.b]]), margin = 2)*100, digits = 2))
+  colnames(df2) <- c("cell_type", "cluster", "percentage")
+  print(ggplot(df2, aes(x = cluster, y = percentage))+
+    geom_bar(stat = "identity", aes(fill = cell_type))+
+    theme_bw()+
+    coord_flip()+
+    scale_x_discrete(limits = rev(levels(df2$cluster))))
+}
+```
+
+#### Cell phase
+
+Plots comparing cell type assignments divided by cell phase assignment with the unsupervised clustering
+
+```{r singleR_and_phase_vs_clustering_plots, fig.width=12, fig.height=12, echo=F}
+for(g.b in grep("^RNA_snn_res", colnames(so@meta.data), value = TRUE)){
+  res = gsub("RNA_snn_res.", "", g.b)
+  cat("Resolution : ", res, "\n")
+  df <- as.data.frame(round(prop.table(table(so@meta.data[[g.b]], interaction(so$Phase, so$pruned.labels_singleR_fine)), margin = 2)*100, digits = 2))
+colnames(df) <- c("cluster", "phase_cell_type", "percentage")
+print(ggplot(df, aes(x = phase_cell_type, y = percentage))+
+  geom_bar(stat = "identity", aes(fill = cluster))+
+  theme_bw()+
+  coord_flip()+
+  scale_x_discrete(limits = rev(levels(df$phase_cell_type))))
+  df2 <- as.data.frame(round(prop.table(table(interaction(so$Phase, so$pruned.labels_singleR_fine), so@meta.data[[g.b]]), margin = 2)*100, digits = 2))
+colnames(df2) <- c("phase_cell_type", "cluster", "percentage")
+print(ggplot(df2, aes(x = cluster, y = percentage))+
+  geom_bar(stat = "identity", aes(fill = phase_cell_type))+
+  theme_bw()+
+  coord_flip()+
+  scale_x_discrete(limits = rev(levels(df2$cluster))))
+}
+```
+
+## Session info
+
+```{r, echo=F}
+sessionInfo()
+```

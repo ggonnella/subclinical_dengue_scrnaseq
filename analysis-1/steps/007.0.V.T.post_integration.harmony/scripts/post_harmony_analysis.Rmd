@@ -28,9 +28,9 @@ library(mclust)
 prj_root <- paste0(params$pfx, "inden/")
 analysis_root <- paste0(prj_root, "analysis-1/")
 
-scripts_dir <- paste0(prj_root, "scripts/")
+helpers_dir <- paste0(prj_root, "helpers/")
+source(paste0(helpers_dir,"factor_resolution.R"))
 
-source(paste0(scripts_dir,"factor_resolution.R"))
 input_step_dir <- paste0(analysis_root, "steps/007.0.P.T.integration.harmony/")
 var_dir <- paste0(input_step_dir, "results/vars/")
 ```

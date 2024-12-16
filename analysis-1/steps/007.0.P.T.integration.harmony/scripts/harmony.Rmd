@@ -12,7 +12,6 @@ params:
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(message = FALSE, warning = FALSE, comment = FALSE, echo = TRUE)
 
-# required libraries
 library(harmony)
 library(Seurat)
 library(viridis)
@@ -25,8 +24,6 @@ library(reshape2)
 library(ggsci)
 library(dplyr)
 
-
-# Directory and source scripts setup
 prj_root <- paste0(params$pfx, "inden/")
 analysis_root <- paste0(prj_root, "analysis-1/")
 
@@ -38,9 +35,8 @@ this_step_dir <- paste0(analysis_root, "steps/007.0.C.T.integration.harmony/")
 var_dir <- paste0(this_step_dir, "results/vars/")
 dir.create(var_dir, showWarnings = FALSE, recursive = TRUE)
 
-scripts_dir <- paste0(prj_root, "scripts/")
-source(paste0(scripts_dir,"factor_resolution.R"))
-
+helpers_dir <- paste0(prj_root, "helpers/")
+source(paste0(helpers_dir, "factor_resolution.R"))
 ```
 
 ```{r load_file, echo = FALSE}

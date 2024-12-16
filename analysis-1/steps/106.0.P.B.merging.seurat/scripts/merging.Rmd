@@ -1,7 +1,7 @@
 ---
-title: "InDen Project | T cells | Merging"
+title: "InDen Project | B cells | Merging"
 author: "Giorgio Gonnella"
-date: 2024-04-24
+date: 2024-04-29
 output: html_document
 params:
   pfx: "/srv/baia/"
@@ -25,9 +25,10 @@ prj_root <- paste0(params$pfx, "inden/")
 analysis_root <- paste0(prj_root, "analysis-1/")
 
 # TODO: change this, integrating the steps before 006 to the analysis
-input_var_dir_prevanalysis <- paste0(prj_root, "data/tcells/")
+input_var_dir_prevanalysis1 <- paste0(prj_root, "data/bcells1/")
+input_var_dir_prevanalysis2 <- paste0(prj_root, "data/bcells2/")
 
-this_step_dir <- paste0(analysis_root, "steps/006.0.P.T.merging.seurat/")
+this_step_dir <- paste0(analysis_root, "steps/106.0.P.B.merging.seurat/")
 var_dir <- paste0(this_step_dir, "results/vars/")
 dir.create(var_dir, showWarnings = FALSE, recursive = TRUE)
 
@@ -45,12 +46,26 @@ object.
 The files are imported as a list of Seurat objects.
 
 ```{r importing, echo=TRUE}
-tcells_files <- list.files(path = input_var_dir_prevanalysis,
-                           pattern = "_filt.Rdata")
-tcells_ls <- sapply(tcells_files, function(x)
-                      mget(load(paste0(input_var_dir_prevanalysis, x))))
-names(tcells_ls) <- gsub(".Rdata", "", tcells_files)
-rm(tcells_files)
+bcells_files1 <-
+  list.files(path = input_var_dir_prevanalysis1, pattern = "_Bcells.Rdata")
+bcells_ls1 <- sapply(bcells_files1,
+            function(x) mget(load(paste0(input_var_dir_prevanalysis1, x))))
+bcells_files2 <- list.files(path = input_var_dir_prevanalysis2, pattern = "_bcells.Rdata")
+bcells_ls2 <-
+  sapply(bcells_files2, function(x) mget(load(paste0(input_var_dir_prevanalysis2, x))))
+bcells_ls <- c(bcells_ls1, bcells_ls2)
+rm(list = (c("bcells_files1", "bcells_files2", "bcells_ls1", "bcells_ls2")))
+names(bcells_ls) <- sapply(bcells_ls, function(x) x$orig.ident[[1]])
+```
+
+## Filtering
+
+Sample 10 is removed because of the low number of cells.
+
+```{r datasets_filtering}
+exclude <- c("TC_SC03_S10B_so")
+keep <- setdiff(names(bcells_ls), exclude)
+bcells_ls <- bcells_ls[keep]
 ```
 
 ## Pre-processing
@@ -59,7 +74,7 @@ The analysis (SCT, PCA, UMAP) is removed from the Seurat objects to avoid
 confusion after the merging. Without this step, the merging function fails.
 
 ```{r remove_info}
-tcells_ls <- lapply(tcells_ls, remove_info)
+bcells_ls <- lapply(bcells_ls, remove_info)
 ```
 
 ## Merging
@@ -68,43 +83,41 @@ The Seurat objects for the individual samples are merged
 into one Seurat object, using the `merge()` function.
 
 ```{r merging, echo=TRUE}
-so <- merge(x = tcells_ls[[1]], y = tcells_ls[-1], project = "so")
-rm(list = (c("tcells_ls")))
+so <- merge(x = bcells_ls[[1]],
+                           y = bcells_ls[-1],
+                           project = "so")
+rm(list = (c("bcells_ls")))
 ```
 
 The samples in the merged object are ordered by sample number.
 
 ```{r sample_ordering, echo=TRUE}
+so$orig.ident[
+      so$orig.ident == "sample_15_B_so"] <- "TC_SC03_S15B_so"
+so$orig.ident[
+      so$orig.ident == "sample_16_B_so"] <- "TC_SC03_S16B_so"
 so$orig.ident <- factor(so$orig.ident,
-                        levels = paste0("TC_SC03_S", 1:14, "T_so"))
-so$sample <- sub(".*(S\\d+T).*", "\\1", so$orig.ident)
+                                       levels = c("TC_SC03_S1B_so",
+                                                  "TC_SC03_S5B_so",
+                                                  "TC_SC03_S6B_so",
+                                                  "TC_SC03_S7B_so",
+                                                  "TC_SC03_S8B_so",
+                                                  "TC_SC03_S9B_so",
+                                                  "TC_SC03_S11B_so",
+                                                  "TC_SC03_S12B_so",
+                                                  "TC_SC03_S13B_so",
+                                                  "TC_SC03_S15B_so",
+                                                  "TC_SC03_S16B_so"))
 ```
 
 Add clinical condition metadata.
 
 ```{r add_clinical_condition, echo=TRUE}
 conditions <- c("Hospitalized", "Mild")
-hosp_n = as.character(1:7)
+hosp_n = c("1", "2", "3", "5", "6", "7", "15", "16")
 so$clinical_condition <-
-  ifelse(so$orig.ident %in% paste0("TC_SC03_S", hosp_n, "T_so"),
+  ifelse(so$orig.ident %in% paste0("TC_SC03_S", hosp_n, "B_so"),
          conditions[1], conditions[2])
-```
-
-## Filtering
-
-Sample 4 and 14 are removed after quality control.
-
-Sample 4 is removed, since it contained (before filtering) an anomalous amount
-of cells with high MT genes.
-
-Sample 14 is removed, since it contains very few cells and sequences overall.
-
-```{r datasets_filtering}
-print(paste0("Number of samples before filtering: ", ncol(so)))
-so <- subset(x = so, subset = orig.ident != "TC_SC03_S4T_so")
-so <- subset(x = so, subset = orig.ident != "TC_SC03_S14T_so")
-so$orig.ident <- droplevels(so$orig.ident)
-print(paste0("Number of samples after filtering: ", ncol(so)))
 ```
 
 ## Normalization
@@ -116,8 +129,10 @@ so <- NormalizeData(object = so, assay = "RNA")
 ## Selection of highly variable genes
 
 ```{r hvg_selection, echo=TRUE}
-so <- FindVariableFeatures(object = so, assay = "RNA",
-                           nfeatures = 2500, selection.method = "vst")
+so <- FindVariableFeatures(object = so,
+                           assay = "RNA",
+                           nfeatures = 2500,
+                           selection.method = "vst")
 ```
 
 Removing unwanted source of variation in the highly variable genes
@@ -136,7 +151,7 @@ unwanted_genes <- c(so@misc$genesets$TCR,
 
 ```{r correcting_hvg, echo=TRUE}
 hvg_corr <- so@assays$RNA@var.features[
-  !so@assays$RNA@var.features %in% unwanted_genes]
+      !so@assays$RNA@var.features %in% unwanted_genes]
 ```
 
 ## Scaling data
@@ -153,15 +168,16 @@ so <- ScaleData(object = so,
 
 ```{r pca, echo=TRUE}
 so <- RunPCA(object = so, features = hvg_corr,
-             npcs = 50, assay = "RNA")
+                            npcs = 50, assay = "RNA")
 ```
 
 ## Non-linear dim reduction (UMAP)
 
 ```{r umap, echo=TRUE}
 myDims <- 1:40
+
 so <- RunUMAP(object = so, dims = myDims,
-              reduction = "pca", reduction.name = "umap")
+                             reduction = "pca", reduction.name = "umap")
 ```
 
 ## Clustering
