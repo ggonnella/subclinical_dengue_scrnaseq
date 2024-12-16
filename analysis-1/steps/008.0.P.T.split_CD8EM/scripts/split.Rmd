@@ -1,0 +1,154 @@
+---
+title: "InDen Project | T cells | Split Effector Memory CD8+ cells"
+author: "Giorgio Gonnella"
+date: 2024-05-21
+output:
+  html_document:
+    clean: FALSE
+    theme: sandstone
+params:
+  pfx: "/srv/baia/"
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(message = FALSE, warning = FALSE, comment = FALSE, echo = TRUE)
+
+library(Seurat)
+library(viridis)
+library(ggplot2)
+library(ggrepel)
+library(ggExtra)
+library(gplots)
+library(RColorBrewer)
+library(reshape2)
+library(ggsci)
+library(dplyr)
+library(harmony)
+
+prj_root <- paste0(params$pfx, "inden/")
+analysis_root <- paste0(prj_root, "analysis-1/")
+
+prev_step_dir <- paste0(analysis_root, "steps/007.0.P.T.integration.harmony/")
+input_var_dir <- paste0(prev_step_dir, "results/vars/")
+
+this_step_dir <- paste0(analysis_root, "steps/008.0.P.T.split_CD8EM/")
+var_dir <- paste0(this_step_dir, "results/vars/")
+dir.create(var_dir, showWarnings = FALSE, recursive = TRUE)
+```
+
+```{r load_data, echo = FALSE}
+so <- readRDS(paste0(input_var_dir, "integrated_so.rds"))
+```
+
+The purpose of this step is to divide the effector memory CD8 cells according to
+their unsupervised clustering. The cluster 11 cells will be separated
+from the other cells, and called, respectively,
+"Proliferating effector memory CD8 T cells"
+and "Non-proliferating effector memory CD8 T cells".
+
+# Before splitting
+
+```{r before}
+table(so$pruned.labels_singleR_fine)
+```
+
+# Splitting
+
+```{r splitting, echo = TRUE}
+g.b = so@misc$sel_res_col
+sel_cluster = "11"
+
+so$pruned.labels_singleR_fine.mod <-
+  so$pruned.labels_singleR_fine
+so$pruned.labels_singleR_fine.mod <-
+  ifelse(so$pruned.labels_singleR_fine ==
+         "Effector memory CD8 T cells",
+         ifelse(so@meta.data[[g.b]] == sel_cluster,
+                "Proliferating effector memory CD8 T cells",
+                "Non-proliferating effector memory CD8 T cells"),
+         as.character(so$pruned.labels_singleR_fine))
+```
+
+Alternative splitting, by Phase (G2M, S, G1)
+stored in a different slot
+
+```{r split_by_phase, echo=TRUE}
+so$pruned.labels_singleR_fine.mod_by_phase <-
+  so$pruned.labels_singleR_fine
+so$pruned.labels_singleR_fine.mod_by_phase <-
+  ifelse(so$pruned.labels_singleR_fine ==
+         "Effector memory CD8 T cells",
+         ifelse(so$Phase %in% c("G2M", "S"),
+                "Proliferating effector memory CD8 T cells",
+                "Non-proliferating effector memory CD8 T cells"),
+         as.character(so$pruned.labels_singleR_fine))
+```
+
+# After splitting
+
+```{r after}
+table(so$pruned.labels_singleR_fine.mod)
+```
+
+# Post-processing
+
+## Group and sort fine celltype labels
+
+```{r fctype_groups, echo=TRUE}
+so@misc$fctype_mod_group <- list()
+so@misc$fctype_mod_group[["CD4+"]] <-
+  c("Th17 cells", "Th2 cells", "Th1 cells",
+    "Th1/Th17 cells", "Naive CD4 T cells", "T regulatory cells",
+    "Follicular helper T cells", "Terminal effector CD4 T cells")
+so@misc$fctype_mod_group[["CD8+"]] <-
+  c("Naive CD8 T cells", "Central memory CD8 T cells",
+    "Terminal effector CD8 T cells",
+    "Proliferating effector memory CD8 T cells",
+    "Non-proliferating effector memory CD8 T cells")
+so@misc$fctype_mod_group[["Other"]] <-
+  c("Gamma-delta T cells", "MAIT cells",
+    "Natural killer cells", "Uncharacterized")
+
+so$pruned.labels_singleR_fine.mod <-
+  factor(so$pruned.labels_singleR_fine.mod,
+         levels = c(so@misc$fctype_mod_group[["CD4+"]],
+                    so@misc$fctype_mod_group[["CD8+"]],
+                    so@misc$fctype_mod_group$Other))
+so$pruned.labels_singleR_fine.mod <-
+  droplevels(so$pruned.labels_singleR_fine.mod)
+```
+
+## Abbreviated labels
+
+```{r abbrev_labels, echo=TRUE}
+so@misc$pruned.labels_singleR_fine.abbrev[[
+    "Proliferating effector memory CD8 T cells"]] <- "Prolif. CD8+ EM"
+so@misc$pruned.labels_singleR_fine.abbrev[[
+    "Non-proliferating effector memory CD8 T cells"]] <- "Non-prolif. CD8+ EM"
+
+so$pruned.labels_singleR_fine.mod.abbrev <- factor(
+  as.vector(so@misc$pruned.labels_singleR_fine.abbrev[as.character(so$pruned.labels_singleR_fine.mod)]),
+  levels = so@misc$pruned.labels_singleR_fine.abbrev[levels(so$pruned.labels_singleR_fine.mod)]
+)
+```
+
+## Color schemes
+
+```{r color_scheme_for_fine_labels}
+so@misc$fctype_mod_cols <-
+  c(so@misc$fctype_cols,
+   "Proliferating effector memory CD8 T cells" = "#ffa9ff",  # Light Pink
+   "Non-proliferating effector memory CD8 T cells" = "#ac2355") # Dark Pink
+```
+
+## Saving data
+
+```{r, echo=TRUE}
+saveRDS(so, paste0(var_dir, "splitted_CD8EM_so.rds"))
+```
+
+# Session info
+
+```{r}
+sessionInfo()
+```
