@@ -1,0 +1,350 @@
+---
+title: "InDen Project | T cells | Results after Splitting CD8 T_EM"
+author: "Giorgio Gonnella"
+date: 2024-04-23
+output:
+  html_document:
+    clean: FALSE
+    theme: sandstone
+params:
+  pfx: "/srv/baia/"
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(message = FALSE, warning = FALSE, comment = FALSE, echo = TRUE)
+
+# Library
+library(Seurat)
+library(viridis)
+library(ggplot2)
+library(ggrepel)
+library(ggExtra)
+library(gplots)
+library(RColorBrewer)
+library(reshape2)
+library(ggsci)
+library(dplyr)
+library(harmony)
+library(mclust)
+
+# Directory
+prj_root <- paste0(params$pfx, "inden/")
+analysis_root <- paste0(prj_root, "analysis-1/")
+
+input_step_dir <- paste0(analysis_root, "steps/008.0.P.T.split_CD8EM/")
+var_dir <- paste0(input_step_dir, "results/vars/")
+
+this_step_dir <- paste0(analysis_root, "steps/008.0.V.T.post_split_CD8EM/")
+plots_outdir <- paste0(this_step_dir, "results/plots/")
+dir.create(plots_outdir, recursive = TRUE)
+
+```
+
+```{r load, echo = FALSE}
+so <- readRDS(paste0(var_dir, "splitted_CD8EM_so.rds"))
+```
+
+## UMAP
+
+### Overall UMAP plot
+
+```{r umap, fig.align = "center", echo = FALSE, fig.width = 12, fig.height = 6}
+DimPlot(object = so, reduction = "umapharm",
+        group.by = "sample",
+        cols = so@misc$sample_cols) +
+  ggtitle("UMAP plot, colored by sample")
+```
+
+### UMAP plots by sample
+
+```{r umap_by_sample, fig.align="center", echo=FALSE, fig.width=12, fig.height=12}
+DimPlot(object = so, reduction = "umapharm",
+        group.by = "sample", cols = so@misc$sample_cols,
+        split.by = "sample", ncol = 3) +
+  NoLegend() +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "orange1") +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "orange1") +
+  ggtitle("UMAP plot, splitted by sample")
+```
+
+### UMAP plot by phase
+
+Basic metrics projected onto the UMAP space
+
+```{r umap_basic_metrics, fig.align="center", echo=F}
+DimPlot(object = so, reduction = "umapharm", group.by = "Phase",
+            cols = so@misc$phase_cols) +
+  ggtitle("UMAP plot, colored by phase")
+```
+
+## Clustering
+
+```{r selected_clustering_resolution, echo=F}
+g.b = so@misc$sel_res_col
+print(paste0("Selected clustering resolution: ",
+             so@misc$sel_res))
+```
+
+```{r umap_clustering, fig.align="center", fig.width=12, fig.height=6, echo=F}
+DimPlot(object = so, reduction = "umapharm",
+        group.by = g.b, label = TRUE,
+        cols = so@misc$cluster_cols) +
+  ggtitle("UMAP plot, colored by cluster")
+```
+
+```{r clusters_by_sample, fig.align="center", fig.width=12, fig.height=6, echo=F}
+sample_vs_cl <- as.data.frame(
+  round(prop.table(table(so@meta.data[[g.b]],
+                         so$sample), margin = 1)*100,
+        digits = 2)
+)
+colnames(sample_vs_cl)[1:2] <- c("Cluster", "SampleID")
+levels(sample_vs_cl$Cluster) <-
+  paste("Cl", levels(sample_vs_cl$Cluster), sep = "_")
+print(ggplot(sample_vs_cl, aes(x = Cluster, y = Freq, fill = SampleID))+
+  geom_bar(stat = "identity", alpha = .98)+
+  coord_flip()+
+  theme_minimal()+
+  scale_fill_manual(values = so@misc$sample_cols))
+```
+
+```{r samples_by_cluster, fig.align="center", fig.width=12, fig.height=6, echo=F}
+cols <- so@misc$cluster_cols
+names(cols) <- paste0("Cl_", names(so@misc$cluster_cols))
+cl_vs_sample <- as.data.frame(
+  round(prop.table(table(so$sample,
+                         so@meta.data[[g.b]]), margin = 1)*100,
+        digits = 2)
+)
+colnames(cl_vs_sample)[1:2] <- c("SampleID", "Cluster")
+levels(cl_vs_sample$Cluster) <-
+  paste("Cl", levels(cl_vs_sample$Cluster), sep = "_")
+print(ggplot(cl_vs_sample, aes(x = SampleID, y = Freq, fill = Cluster))+
+  geom_bar(stat = "identity", alpha = .98)+
+  coord_flip()+
+  theme_minimal()+
+  scale_fill_manual(values = cols))
+```
+
+## Cell types
+
+SingleR fine cell type annotations
+
+```{r umap_singleR_fine.mod, fig.width=12, fig.height=6, echo=F}
+DimPlot(object = so, reduction = "umapharm",
+        group.by = "pruned.labels_singleR_fine.mod",
+        cols = so@misc$fctype_mod_cols, label = F, repel = TRUE) +
+  ggtitle("UMAP plot, colored by cell type")
+```
+
+```{r umap_singleR_by_sample_fine, fig.width=12, fig.height=12, echo=F}
+DimPlot(object = so, reduction = "umapharm",
+        group.by = "pruned.labels_singleR_fine.mod",
+        cols = so@misc$fctype_mod_cols, label = F, repel = TRUE,
+        split.by = "sample", ncol = 3) +
+  NoLegend() +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "orange1") +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "orange1") +
+  ggtitle("UMAP plot, colored by cell type, splitted by sample")
+```
+
+```{r table_fine_celltypes_per_sample, echo=F}
+knitr::kable(as.data.frame.matrix(round(prop.table(table(so$sample,
+  so$pruned.labels_singleR_fine.mod), margin = 2)*100, digits = 2)))
+```
+
+```{r plot_fine_celltypes_per_sample, fig.width=12, fig.height=6, echo=F}
+celltype_df_f <- as.data.frame(round(prop.table(table(so$sample,
+  so$pruned.labels_singleR_fine.mod), margin = 2)*100, digits = 2))
+colnames(celltype_df_f) <- c("sample_id", "cell_type", "percentage")
+ggplot(celltype_df_f, aes(x = cell_type, y = percentage))+
+  geom_bar(stat = "identity", aes(fill = sample_id))+
+  scale_fill_manual(values = so@misc$sample_cols)+
+  theme_bw()+
+  coord_flip()+
+  scale_x_discrete(limits = rev(levels(celltype_df_f$cell_type)))
+```
+
+```{r table_samples_per_fine_celltype, echo=F}
+knitr::kable(as.data.frame.matrix(round(prop.table(
+    table(so$pruned.labels_singleR_fine.mod,
+          so$sample), margin = 2)*100, digits = 2)))
+```
+
+```{r plot_samples_per_fine_celltypes, fig.width=12, echo=F}
+celltype_df_fr <- as.data.frame(round(prop.table(
+      table(so$pruned.labels_singleR_fine.mod,
+            so$sample), margin = 2)*100, digits = 2))
+colnames(celltype_df_fr) <- c("cell_type", "sample_id", "percentage")
+ggplot(celltype_df_fr, aes(x = sample_id, y = percentage))+
+  geom_bar(stat = "identity", aes(fill = cell_type))+
+  scale_fill_manual(values = so@misc$fctype_mod_cols)+
+  theme_bw()+
+  coord_flip()+
+  scale_x_discrete(limits = rev(levels(celltype_df_fr$sample_id)))
+```
+
+### Single cell types
+
+```{r single_cell_types_umap_post_split, echo=F}
+celltype1 <- "Proliferating effector memory CD8 T cells"
+celltype2 <- "Non-proliferating effector memory CD8 T cells"
+highl1 <- WhichCells(so,
+                      expression = pruned.labels_singleR_fine.mod == celltype1)
+highl2 <- WhichCells(so,
+                      expression = pruned.labels_singleR_fine.mod == celltype2)
+plt <- DimPlot(so, reduction = "umapharm",
+          cells.highlight = list("Proliferating"=highl1, "Non-prolif."=highl2),
+          sizes.highlight = 0.01, pt.size = 0.01,
+          cols.highlight = c("darkred", "darkblue"),
+          cols = "grey") + ggtitle("Effector memory CD8 T cells") +
+       theme(legend.position = "right")
+plt
+```
+
+UMAP highlighting single cell types (singleR fine labels)
+
+```{r single_cell_types_umap, fig.width=12, fig.height=6, echo=F}
+for (celltype in unique(so$pruned.labels_singleR_fine.mod)) {
+  highl <- WhichCells(so,
+                      expression = pruned.labels_singleR_fine.mod == celltype)
+  print(DimPlot(so, reduction = "umapharm",
+          cells.highlight = highl, cols.highlight = "darkblue",
+          cols = "grey") + ggtitle(celltype) + theme(legend.position = "none"))
+}
+```
+
+## Cell types by cluster
+
+SingleR assignments by cluster.
+
+```{r singleR_vs_clustering_tables, results="asis", echo=F}
+print(knitr::kable(as.data.frame.matrix(
+      table(so@meta.data[[g.b]],
+            so$pruned.labels_singleR_fine.mod))))
+print(knitr::kable(as.data.frame.matrix(addmargins(round(prop.table(
+      table(so@meta.data[[g.b]],
+            so$pruned.labels_singleR_fine.mod),
+      margin = 1)*100, digits = 2), margin = 2))))
+print(knitr::kable(as.data.frame.matrix(addmargins(round(prop.table(
+      table(so$pruned.labels_singleR_fine.mod,
+            so@meta.data[[g.b]]),
+      margin = 1)*100, digits = 2), margin = 2))))
+```
+
+```{r singleR_vs_clustering_plots1, fig.width=12, fig.height=6, echo=F}
+df <- as.data.frame(round(prop.table(table(so@meta.data[[g.b]],
+        so$pruned.labels_singleR_fine.mod), margin = 2)*100,
+        digits = 2))
+colnames(df) <- c("cluster", "cell_type", "percentage")
+ggplot(df, aes(x = cell_type, y = percentage))+
+  geom_bar(stat = "identity", aes(fill = cluster))+
+  theme_bw()+
+  coord_flip()+
+  scale_x_discrete(limits = rev(levels(df$cell_type))) +
+  scale_fill_manual(values = so@misc$cluster_cols)
+```
+
+```{r singleR_vs_clustering_plots2, fig.width=12, fig.height=6, echo=F}
+df2 <- as.data.frame(round(prop.table(table(
+         so$pruned.labels_singleR_fine.mod,
+         so@meta.data[[g.b]]), margin = 2)*100, digits = 2))
+colnames(df2) <- c("cell_type", "cluster", "percentage")
+ggplot(df2, aes(x = cluster, y = percentage))+
+  geom_bar(stat = "identity", aes(fill = cell_type))+
+  theme_bw()+
+  coord_flip()+
+  scale_x_discrete(limits = rev(levels(df2$cluster))) +
+  scale_fill_manual(values = so@misc$fctype_mod_cols)
+```
+
+## Phase by cluster
+
+```{r phase_vs_clustering_tables, results="asis", echo=F}
+print(knitr::kable(as.data.frame.matrix(
+      table(so@meta.data[[g.b]],
+            so$Phase))))
+print(knitr::kable(as.data.frame.matrix(addmargins(round(prop.table(
+      table(so@meta.data[[g.b]],
+            so$Phase),
+      margin = 1)*100, digits = 2), margin = 2))))
+print(knitr::kable(as.data.frame.matrix(addmargins(round(prop.table(
+      table(so$Phase,
+            so@meta.data[[g.b]]),
+      margin = 1)*100, digits = 2), margin = 2))))
+```
+
+```{r phase_vs_clustering_plots1, fig.width=12, fig.height=6, echo=F}
+df <- as.data.frame(round(prop.table(table(so@meta.data[[g.b]],
+        so$Phase), margin = 2)*100,
+        digits = 2))
+colnames(df) <- c("cluster", "phase", "percentage")
+ggplot(df, aes(x = phase, y = percentage))+
+  geom_bar(stat = "identity", aes(fill = cluster))+
+  theme_bw()+
+  coord_flip()+
+  scale_x_discrete(limits = rev(levels(df$phase))) +
+  scale_fill_manual(values = so@misc$cluster_cols)
+```
+
+```{r phase_vs_clustering_plots2, fig.width=12, fig.height=6, echo=F}
+df2 <- as.data.frame(round(prop.table(table(
+         so$Phase,
+         so@meta.data[[g.b]]), margin = 2)*100, digits = 2))
+colnames(df2) <- c("phase", "cluster", "percentage")
+ggplot(df2, aes(x = cluster, y = percentage))+
+  geom_bar(stat = "identity", aes(fill = phase))+
+  theme_bw()+
+  coord_flip()+
+  scale_x_discrete(limits = rev(levels(df2$cluster))) +
+  scale_fill_manual(values = so@misc$phase_cols)
+```
+
+## Phase by cell type
+
+```{r phase_vs_fine_celltype_tables, results="asis", echo=F}
+print(knitr::kable(as.data.frame.matrix(
+      table(so$pruned.labels_singleR_fine.mod,
+            so$Phase))))
+print(knitr::kable(as.data.frame.matrix(addmargins(round(prop.table(
+      table(so$pruned.labels_singleR_fine.mod,
+            so$Phase),
+      margin = 1)*100, digits = 2), margin = 2))))
+print(knitr::kable(as.data.frame.matrix(addmargins(round(prop.table(
+      table(so$Phase,
+            so$pruned.labels_singleR_fine.mod),
+      margin = 1)*100, digits = 2), margin = 2))))
+```
+
+```{r phase_vs_fine_celltype_plots1, fig.width=12, fig.height=6, echo=F}
+df <- as.data.frame(round(prop.table(table(
+        so$pruned.labels_singleR_fine.mod,
+        so$Phase), margin = 2)*100,
+        digits = 2))
+colnames(df) <- c("cell_type", "phase", "percentage")
+ggplot(df, aes(x = phase, y = percentage))+
+  geom_bar(stat = "identity", aes(fill = cell_type))+
+  theme_bw()+
+  coord_flip()+
+  scale_x_discrete(limits = rev(levels(df$phase))) +
+  scale_fill_manual(values = so@misc$fctype_mod_cols)
+```
+
+```{r phase_vs_fine_celltype_plots2, fig.width=12, fig.height=6, echo=F}
+df2 <- as.data.frame(round(prop.table(table(
+         so$Phase,
+         so$pruned.labels_singleR_fine.mod), margin = 2)*100, digits = 2))
+colnames(df2) <- c("phase", "cell_type", "percentage")
+ggplot(df2, aes(x = cell_type, y = percentage))+
+  geom_bar(stat = "identity", aes(fill = phase))+
+  theme_bw()+
+  coord_flip()+
+  scale_x_discrete(limits = rev(levels(df2$cell_type))) +
+  scale_fill_manual(values = so@misc$phase_cols)
+```
+
+## Session info
+
+```{r, echo=F}
+sessionInfo()
+```
