@@ -24,7 +24,9 @@ library(dplyr)
 prj_root <- paste0(params$pfx, "inden/")
 analysis_root <- paste0(prj_root, "analysis-1/")
 
+# TODO: change this, integrating the steps before 006 to the analysis
 input_var_dir_prevanalysis <- paste0(prj_root, "data/tcells/")
+
 this_step_dir <- paste0(analysis_root, "steps/006.0.P.T.merging.seurat/")
 var_dir <- paste0(this_step_dir, "results/vars/")
 dir.create(var_dir, showWarnings = FALSE, recursive = TRUE)
@@ -81,7 +83,7 @@ so$sample <- sub(".*(S\\d+T).*", "\\1", so$orig.ident)
 Add clinical condition metadata.
 
 ```{r add_clinical_condition, echo=TRUE}
-conditions <- c("Hospitalized", "Inapparent")
+conditions <- c("Hospitalized", "Mild")
 hosp_n = as.character(1:7)
 so$clinical_condition <-
   ifelse(so$orig.ident %in% paste0("TC_SC03_S", hosp_n, "T_so"),
