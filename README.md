@@ -14,6 +14,7 @@ The analyses are perfomed using:
 The repository is organized as follows:
 - "analysis-1" original computation, analyses steps and results
 - "helpers" helper scripts, containing functions common to multiple steps
+- "scripts" command line scripts
 
 Note: if a revision will be necessary, "analysis-2" will be created for
 further analyses steps and results.
