@@ -1,0 +1,186 @@
+---
+title: "InDen Project | T cells | Merging"
+author: "Giorgio Gonnella"
+date: 2024-04-24
+output: html_document
+params:
+  pfx: "/srv/baia/"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message=F, warning=F, comment = F, echo =T)
+
+library(Seurat)
+library(viridis)
+library(ggplot2)
+library(ggrepel)
+library(ggExtra)
+library(gplots)
+library(RColorBrewer)
+library(reshape2)
+library(ggsci)
+library(dplyr)
+
+prj_root <- paste0(params$pfx, "inden/")
+analysis_root <- paste0(prj_root, "analysis-1/")
+
+input_var_dir_prevanalysis <- paste0(prj_root, "data/tcells/")
+this_step_dir <- paste0(analysis_root, "steps/006.0.P.T.merging.seurat/")
+var_dir <- paste0(this_step_dir, "results/vars/")
+dir.create(var_dir, showWarnings = FALSE, recursive = TRUE)
+
+scripts_dir <- paste0(prj_root, "scripts/")
+source(paste0(scripts_dir, "helpers.R"))
+source(paste0(scripts_dir, "factor_resolution.R"))
+```
+
+In the merging step, the individual samples are merged into a single
+Seurat object. The UMAP, PCA, and clustering are performed on the merged
+object.
+
+## Importing the Seurat objects
+
+The files are imported as a list of Seurat objects.
+
+```{r importing, echo=TRUE}
+tcells_files <- list.files(path = input_var_dir_prevanalysis,
+                           pattern = "_filt.Rdata")
+tcells_ls <- sapply(tcells_files, function(x)
+                      mget(load(paste0(input_var_dir_prevanalysis, x))))
+names(tcells_ls) <- gsub(".Rdata", "", tcells_files)
+rm(tcells_files)
+```
+
+## Pre-processing
+
+The analysis (SCT, PCA, UMAP) is removed from the Seurat objects to avoid
+confusion after the merging. Without this step, the merging function fails.
+
+```{r remove_info}
+tcells_ls <- lapply(tcells_ls, remove_info)
+```
+
+## Merging
+
+The Seurat objects for the individual samples are merged
+into one Seurat object, using the `merge()` function.
+
+```{r merging, echo=TRUE}
+so <- merge(x = tcells_ls[[1]], y = tcells_ls[-1], project = "so")
+rm(list = (c("tcells_ls")))
+```
+
+The samples in the merged object are ordered by sample number.
+
+```{r sample_ordering, echo=TRUE}
+so$orig.ident <- factor(so$orig.ident,
+                        levels = paste0("TC_SC03_S", 1:14, "T_so"))
+so$sample <- sub(".*(S\\d+T).*", "\\1", so$orig.ident)
+```
+
+Add clinical condition metadata.
+
+```{r add_clinical_condition, echo=TRUE}
+conditions <- c("Hospitalized", "Inapparent")
+hosp_n = as.character(1:7)
+so$clinical_condition <-
+  ifelse(so$orig.ident %in% paste0("TC_SC03_S", hosp_n, "T_so"),
+         conditions[1], conditions[2])
+```
+
+## Filtering
+
+Sample 4 and 14 are removed after quality control.
+
+Sample 4 is removed, since it contained (before filtering) an anomalous amount
+of cells with high MT genes.
+
+Sample 14 is removed, since it contains very few cells and sequences overall.
+
+```{r datasets_filtering}
+print(paste0("Number of samples before filtering: ", ncol(so)))
+so <- subset(x = so, subset = orig.ident != "TC_SC03_S4T_so")
+so <- subset(x = so, subset = orig.ident != "TC_SC03_S14T_so")
+so$orig.ident <- droplevels(so$orig.ident)
+print(paste0("Number of samples after filtering: ", ncol(so)))
+```
+
+## Normalization
+
+```{r normalization, echo=TRUE}
+so <- NormalizeData(object = so, assay = "RNA")
+```
+
+## Selection of highly variable genes
+
+```{r hvg_selection, echo=TRUE}
+so <- FindVariableFeatures(object = so, assay = "RNA",
+                           nfeatures = 2500, selection.method = "vst")
+```
+
+Removing unwanted source of variation in the highly variable genes
+
+```{r unwanted_genes, echo=TRUE}
+so@misc$genesets$TCR <- grep(pattern = "^TR[AB][VC]", so@assays$RNA@var.features, value = TRUE)
+so@misc$genesets$IG <- c(grep(pattern = "^IG[HLK][VDJ]", so@assays$RNA@var.features, value = TRUE),
+              c("IGHM", "IGHD", "IGHE", "IGHA[12]", "IGHG[1234]", "IGKC", "IGLC[1234567]", "AC233755.1"))
+so@misc$genesets$MT <- grep(pattern = "^MT", so@assays$RNA@var.features, value = TRUE)
+so@misc$genesets$Ribo <- grep(pattern = "^RP[LS]", so@assays$RNA@var.features, value = TRUE)
+unwanted_genes <- c(so@misc$genesets$TCR,
+                    so@misc$genesets$IG,
+                    so@misc$genesets$MT,
+                    so@misc$genesets$Ribo)
+```
+
+```{r correcting_hvg, echo=TRUE}
+hvg_corr <- so@assays$RNA@var.features[
+  !so@assays$RNA@var.features %in% unwanted_genes]
+```
+
+## Scaling data
+
+```{r scaling, echo=TRUE}
+so <- ScaleData(object = so,
+            features = so@assays$RNA@var.features,
+            vars.to.regress = c("nCount_RNA", "percent.mito"),
+            assay = "RNA")
+```
+
+
+## Linear dimension reduction (PCA)
+
+```{r pca, echo=TRUE}
+so <- RunPCA(object = so, features = hvg_corr,
+             npcs = 50, assay = "RNA")
+```
+
+## Non-linear dim reduction (UMAP)
+
+```{r umap, echo=TRUE}
+myDims <- 1:40
+so <- RunUMAP(object = so, dims = myDims,
+              reduction = "pca", reduction.name = "umap")
+```
+
+## Clustering
+
+```{r clustering, echo=TRUE}
+reS <- c(0.2, 0.4, 0.6, 0.8, 1.0, 1.2)
+
+so <- FindNeighbors(object = so, dims = myDims)
+so <- FindClusters(object = so, resolution = reS)
+
+so <- factor_resolution(so)
+```
+
+## Saving Data
+
+```{r saving}
+saveRDS(so, paste0(var_dir, "merged_so.rds"))
+```
+
+## Session Info
+
+```{r session_info, echo=FALSE}
+sessionInfo()
+```
