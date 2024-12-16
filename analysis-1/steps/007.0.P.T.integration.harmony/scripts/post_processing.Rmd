@@ -1,0 +1,291 @@
+---
+title: "InDen Project | T cells | Post-processing after Harmony integration"
+author: "Giorgio Gonnella"
+date: 2024-06-09
+output:
+  html_document:
+    theme: sandstone
+params:
+  pfx: "/srv/baia/"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE, warning = FALSE, comment = FALSE, echo = TRUE)
+
+library(Seurat)
+library(viridis)
+library(ggplot2)
+library(ggrepel)
+library(ggExtra)
+library(gplots)
+library(RColorBrewer)
+library(reshape2)
+library(ggsci)
+library(dplyr)
+library(harmony)
+library(mclust)
+library(scProportionTest)
+
+prj_root <- paste0(params$pfx, "inden/")
+analysis_root <- paste0(prj_root, "analysis-1/")
+
+this_step_dir <- paste0(analysis_root, "steps/007.0.P.T.integration.harmony/")
+var_dir <- paste0(this_step_dir, "results/vars/")
+```
+
+```{r load, echo=F}
+so <- readRDS(paste0(var_dir, "integrated_so.raw.rds"))
+```
+
+# Sample IDs
+
+```{r create_sample_column, echo=T}
+so$sample <- sub("TC_SC03_(S\\d+T)_so", "\\1",
+                                so$orig.ident)
+levels_sample <- sub("TC_SC03_(S\\d+T)_so", "\\1",
+                     levels(so$orig.ident))
+so$sample <-
+  factor(so$sample, levels=levels_sample)
+```
+
+# Cell types
+
+## Rename unchar celltype label
+
+```{r rename_unchar_to_uncharacterized, echo=F}
+so$pruned.labels_singleR_main <-
+  gsub("unchar", "Uncharacterized",
+       so$pruned.labels_singleR_main)
+so$pruned.labels_singleR_fine <-
+  gsub("unchar", "Uncharacterized",
+       so$pruned.labels_singleR_fine)
+```
+
+# Sum-up gamma-delta T cells
+```{r sum_up_gd, echo=TRUE}
+so$pruned.labels_singleR_fine <-
+  ifelse(so$pruned.labels_singleR_fine == "Vd2 gd T cells",
+         "Gamma-delta T cells",
+         so$pruned.labels_singleR_fine)
+so$pruned.labels_singleR_fine <-
+  ifelse(so$pruned.labels_singleR_fine == "Non-Vd2 gd T cells",
+         "Gamma-delta T cells",
+         so$pruned.labels_singleR_fine)
+```
+
+## Group and sort fine celltype labels
+
+```{r fctype_groups, echo=TRUE}
+so@misc$fctype_group <- list()
+so@misc$fctype_group[["CD4+"]] <-
+  c("Naive CD4 T cells", "Th1 cells", "Th1/Th17 cells", "Th17 cells",
+    "Th2 cells", "Follicular helper T cells", "T regulatory cells",
+    "Terminal effector CD4 T cells")
+so@misc$fctype_group[["CD8+"]] <-
+  c("Naive CD8 T cells", "Central memory CD8 T cells",
+    "Terminal effector CD8 T cells", "Effector memory CD8 T cells")
+so@misc$fctype_group[["Other"]] <-
+  c("Gamma-delta T cells", "MAIT cells",
+    "Natural killer cells", "Uncharacterized")
+
+so$pruned.labels_singleR_fine <-
+  factor(so$pruned.labels_singleR_fine,
+         levels = c(so@misc$fctype_group[["CD4+"]],
+                    so@misc$fctype_group[["CD8+"]],
+                    so@misc$fctype_group$Other))
+
+so$cell_group <- NA
+for (group in names(so@misc$fctype_group)) {
+  so$cell_group <-
+    ifelse(so$pruned.labels_singleR_fine %in%
+             so@misc$fctype_group[[group]],
+           group, so$cell_group)
+}
+```
+
+# Abbreviated fine celltype labels
+
+```{r abbreviate_cell_types, echo=TRUE}
+so@misc$pruned.labels_singleR_fine.abbrev <-
+  levels(so$pruned.labels_singleR_fine)
+names(so@misc$pruned.labels_singleR_fine.abbrev) <-
+  levels(so$pruned.labels_singleR_fine)
+
+so@misc$pruned.labels_singleR_fine.abbrev[[
+    "Naive CD4 T cells"]] <- "CD4+ Naive"
+so@misc$pruned.labels_singleR_fine.abbrev[[
+    "Th1 cells"]] <- "Th1"
+so@misc$pruned.labels_singleR_fine.abbrev[[
+    "Th1/Th17 cells"]] <- "Th1/Th17"
+so@misc$pruned.labels_singleR_fine.abbrev[[
+    "Th17 cells"]] <- "Th17"
+so@misc$pruned.labels_singleR_fine.abbrev[[
+    "Th2 cells"]] <- "Th2"
+so@misc$pruned.labels_singleR_fine.abbrev[[
+    "Follicular helper T cells"]] <- "Tfh"
+so@misc$pruned.labels_singleR_fine.abbrev[[
+    "T regulatory cells"]] <- "Tregs"
+so@misc$pruned.labels_singleR_fine.abbrev[[
+    "Terminal effector CD4 T cells"]] <- "CD4+ TEMRA"
+so@misc$pruned.labels_singleR_fine.abbrev[[
+    "Naive CD8 T cells"]] <- "CD8+ Naive"
+so@misc$pruned.labels_singleR_fine.abbrev[[
+    "Central memory CD8 T cells"]] <- "CD8+ CM"
+so@misc$pruned.labels_singleR_fine.abbrev[[
+    "Effector memory CD8 T cells"]] <- "CD8+ EM"
+so@misc$pruned.labels_singleR_fine.abbrev[[
+    "Terminal effector CD8 T cells"]] <- "CD8+ TEMRA"
+so@misc$pruned.labels_singleR_fine.abbrev[[
+    "MAIT cells"]] <- "MAIT"
+so@misc$pruned.labels_singleR_fine.abbrev[[
+    "Gamma-delta T cells"]] <- "GD"
+```
+
+```{r apply_abbreviated_labels, echo=TRUE}
+so$pruned.labels_singleR_fine.abbrev <-
+  factor(as.vector(so@misc$pruned.labels_singleR_fine.abbrev[
+    so$pruned.labels_singleR_fine]),
+    levels = so@misc$pruned.labels_singleR_fine.abbrev[
+      levels(so$pruned.labels_singleR_fine)])
+```
+
+# Clinical condition
+
+```{r create_clinical_condition_column, echo=TRUE}
+conditions <- c("Mild", "Hospitalized")
+hosp_n = as.character(1:7)
+so$clinical_condition <-
+  ifelse(so$orig.ident %in% paste0("TC_SC03_S", hosp_n, "T_so"),
+         conditions[2], conditions[1])
+so$clinical_condition <-
+  so$clinical_condition <-
+    factor(so$clinical_condition, levels = conditions)
+```
+
+# Select clustering resolution
+
+```{r selected_resolution, echo=TRUE}
+so@misc$sel_res <- "1.2"
+so@misc$sel_res_col <- paste0("harmsnn_res.", so@misc$sel_res)
+```
+
+# Color schemes
+
+```{r color_scheme_for_main_labels}
+so@misc$mctype_cols <-
+  colorRampPalette(brewer.pal(6, "Accent"))(
+    length(unique(so$pruned.labels_singleR_main)))
+names(so@misc$mctype_cols) <-
+  levels(so$pruned.labels_singleR_main)
+```
+
+```{r color_scheme_for_fine_labels}
+so@misc$fctype_cols <- c(
+  "Th17 cells" = "#1f78b4",         # dark blue
+  "Th2 cells" = "#a6cee3",          # light blue
+  "Th1 cells" = "#000080",          # very dark blue
+  "Th1/Th17 cells" = "#00bfff",     # bright blue
+  "Naive CD4 T cells" = "#238b45",  # darker green
+  "T regulatory cells" = "#aaeeaa", # light green
+  "Follicular helper T cells" = "#66c2a4", # blue-green
+  "Terminal effector CD4 T cells" = "#9acd32", # yellow green
+
+  "Naive CD8 T cells" = "#e31a1c",          # red
+  "Central memory CD8 T cells" = "#fb9a99", # light red
+  "Terminal effector CD8 T cells" = "#ffa500", # orange
+  "Effector memory CD8 T cells" = "#ff69b4",  # pink
+
+  "Vd2 gd T cells" = "#6a51a3",    # dark purple
+  "Non-Vd2 gd T cells" = "#9e9ac8", # light purple
+  "Gamma-delta T cells" = "#5a5aa8",  # dark purple
+
+  "MAIT cells" = "#d2b48c",       # light brown
+  "Natural killer cells" = "#8c564b", # brown
+
+  "Uncharacterized" = "#bdbdbd"    # gray
+)
+```
+
+```{r color_scheme_for_conditions}
+so@misc$cond_cols <- c(
+  "Mild" = "darkblue",
+  "Hospitalized" = "darkred"
+)
+```
+
+```{r color_scheme_for_samples}
+so@misc$sample_cols <-
+  colorRampPalette(brewer.pal(8, name = "Accent"))(
+                  length(unique(so$sample)))
+names(so@misc$sample_cols) <-
+  levels(so$sample)
+```
+
+```{r color_scheme_for_clusters}
+g.b = so@misc$sel_res_col
+so@misc$cluster_cols <-
+  colorRampPalette(brewer.pal(8, name = "Set1"))(
+              length(unique(so@meta.data[[g.b]])))
+names(so@misc$cluster_cols) <-
+  levels(so@meta.data[[g.b]])
+```
+
+```{r color_scheme_for_phases}
+so@misc$phase_cols <- c("#00AFBB", "#E7B800", "#FC4E07")
+names(so@misc$phase_cols) <- c("G1", "G2M", "S")
+```
+
+```{r color_scheme_for_plots_background_divided_by_celltype_group}
+so@misc$ctg_backcols <-
+  c("CD4+" = "#ddffdd", "CD8+" = "#ffcc99", "Other" = "#e6ccff")
+```
+
+# Remove outliers
+
+```{r remove_celltype_outliers, echo=TRUE}
+min_cells_per_celltype <- 10
+celltype_sizes <- table(so$pruned.labels_singleR_fine)
+small_celltypes <- names(celltype_sizes[celltype_sizes < min_cells_per_celltype])
+so$in_small_celltype <-
+  so$pruned.labels_singleR_fine %in% small_celltypes
+so <- subset(so, in_small_celltype == FALSE)
+so <- subset(so, pruned.labels_singleR_fine != "Uncharacterized")
+so$pruned.labels_singleR_fine <-
+  droplevels(so$pruned.labels_singleR_fine)
+so$pruned.labels_singleR_fine.abbrev <-
+  droplevels(so$pruned.labels_singleR_fine.abbrev)
+```
+
+```{r remove_small_clusters, echo=TRUE}
+# remove cells in clusters which have less than 10 cells:
+min_cluster_size = 10
+cluster_sizes <- table(so@meta.data[[so@misc$sel_res_col]])
+small_clusters <- as.integer(names(cluster_sizes[cluster_sizes < min_cluster_size]))
+so$in_small_cluster <-
+  so@meta.data[[so@misc$sel_res_col]] %in% small_clusters
+so <- subset(so, in_small_cluster == FALSE)
+so$in_small_cluster <- NULL
+so@meta.data[[so@misc$sel_res_col]] <-
+  droplevels(so@meta.data[[so@misc$sel_res_col]])
+```
+
+# Cell proportions permutations test
+```{r cell_proportions_permutation_test, echo=TRUE}
+so@misc$proptest <- permutation_test(sc_utils(so),
+                       cluster_identity = "pruned.labels_singleR_fine.abbrev",
+                       sample_1 = "Mild", sample_2 = "Hospitalized",
+                       sample_identity = "clinical_condition",
+                       n_permutations = 10000)
+```
+
+## Saving data
+
+```{r save, echo=TRUE}
+saveRDS(so, paste0(var_dir, "integrated_so.rds"))
+```
+
+## Session info
+
+```{r, echo=F}
+sessionInfo()
+```
