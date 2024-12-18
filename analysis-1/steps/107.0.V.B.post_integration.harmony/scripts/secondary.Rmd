@@ -1,0 +1,150 @@
+---
+title: "InDen Project | B cells | Secondary results after Harmony integration"
+author: "Giorgio Gonnella"
+date: 2024-06-27
+output:
+  html_document:
+    theme: sandstone
+params:
+  pfx: "/srv/baia/"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE, warning = FALSE, comment = FALSE, echo = TRUE)
+
+library(Seurat)
+library(viridis)
+library(ggplot2)
+library(ggrepel)
+library(ggExtra)
+library(gplots)
+library(RColorBrewer)
+library(reshape2)
+library(ggsci)
+library(dplyr)
+library(harmony)
+library(mclust)
+
+prj_root <- paste0(params$pfx, "inden/")
+analysis_root <- paste0(prj_root, "analysis-1/")
+
+input_step_dir <- paste0(analysis_root, "steps/107.0.P.B.integration.harmony/")
+var_dir <- paste0(input_step_dir, "results/vars/")
+```
+
+```{r load, echo=F}
+so <- readRDS(file = paste0(var_dir, "integrated_so.rds"))
+```
+
+## UMAP
+
+### Basic metrics
+
+Basic metrics projected onto the UMAP space
+
+```{r umap_basic_metrics, fig.align="center", echo=F}
+FeaturePlot(so, reduction = "umapharm",
+            features = "nCount_RNA") + scale_color_viridis()
+FeaturePlot(so, reduction = "umapharm",
+            features = "nFeature_RNA") + scale_color_viridis(option = "inferno")
+FeaturePlot(so, reduction = "umapharm",
+            features = "percent.mito") + scale_color_viridis(option = "magma")
+```
+
+```{r basic_metrics_umap, fig.align="center", echo=F}
+FeaturePlot(so, reduction = "umapharm", features = "nCount_RNA", split.by = "clinical_condition")+  theme(legend.position="right")
+FeaturePlot(so, reduction = "umapharm", features = "nFeature_RNA", split.by = "clinical_condition")+  theme(legend.position="right")
+FeaturePlot(so, reduction = "umapharm", features = "percent.mito", split.by = "clinical_condition")+  theme(legend.position="right")
+```
+## Clustering
+
+```{r clustering_base_stats, fig.align="center", fig.width=12, fig.height=6, echo=F}
+print(VlnPlot(object = so, features = c("nCount_RNA",
+       "nFeature_RNA", "percent.mito"), group.by = so@misc$sel_res_col,
+              cols = so@misc$cluster_cols))
+```
+
+```{r basic_metrics, fig.align="center", fig.width=12, fig.height=6, echo=F}
+print(VlnPlot(object = so,
+              features = c("nCount_RNA", "nFeature_RNA", "percent.mito"),
+              group.by = so@misc$sel_res_col,
+              cols = so@misc$cluster_cols,
+              split.by = "clinical_condition"))
+```
+
+## Main cell types
+
+SingleR main cell type annotations
+
+```{r umap_singleR_main, fig.width=12, fig.height=6, echo=F}
+DimPlot(object = so, reduction = "umapharm", group.by = "pruned.labels_singleR_main", cols = so@misc$mctype_cols, label = TRUE, repel = TRUE)
+```
+
+```{r umap_singleR_by_sample_main, fig.width=12, fig.height=12, echo=F}
+DimPlot(object = so, reduction = "umapharm", group.by = "pruned.labels_singleR_main", cols = so@misc$mctype_cols, label = TRUE, repel = TRUE, split.by = "sample", ncol = 3)+NoLegend()+geom_hline(yintercept = 0, linetype = "dashed", color = "orange1")+geom_vline(xintercept = 0, linetype = "dashed", color = "orange1")
+```
+
+```{r table_singleR_main, echo=F}
+knitr::kable(as.data.frame.matrix(round(prop.table(table(so$sample, so$pruned.labels_singleR_main), margin = 2)*100, digits = 2)))
+```
+
+```{r celltypes_per_sample_data_main, echo=F}
+celltype_df_m <- as.data.frame(round(prop.table(table(so$sample, so$pruned.labels_singleR_main), margin = 2)*100, digits = 2))
+colnames(celltype_df_m) <- c("sample_id", "cell_type", "percentage")
+```
+
+```{r celltypes_per_sample_1_main, fig.width=12, fig.height=4, echo=F}
+ggplot(celltype_df_m, aes(x = cell_type, y = percentage))+
+  geom_bar(stat = "identity", aes(fill = sample_id))+
+  scale_fill_manual(values = so@misc$sample_cols)+
+  theme_bw()+
+  coord_flip()+
+  scale_x_discrete(limits = rev(levels(celltype_df_m$cell_type)))
+```
+
+```{r samples_per_celltype_table_main, echo=F}
+knitr::kable(as.data.frame.matrix(round(prop.table(table(so$pruned.labels_singleR_main,
+                                                         so$sample), margin = 2)*100, digits = 2)))
+```
+
+```{r samples_per_celltypes_data_main, echo=F}
+celltype_df_mr <- as.data.frame(round(prop.table(table(so$pruned.labels_singleR_main,
+                                                    so$sample), margin = 2)*100, digits = 2))
+colnames(celltype_df_mr) <- c("cell_type", "sample_id", "percentage")
+```
+
+```{r samples_per_celltype_plot_main, fig.width=12, fig.height=4, echo=F}
+ggplot(celltype_df_mr, aes(x = sample_id, y = percentage))+
+  geom_bar(stat = "identity", aes(fill = cell_type))+
+  scale_fill_manual(values = so@misc$mctype_cols)+
+  theme_bw()+
+  coord_flip()+
+  scale_x_discrete(limits = rev(levels(celltype_df_mr$sample_id)))
+```
+
+## Cell phase
+
+Plots comparing cell type assignments divided by cell phase assignment with the unsupervised clustering
+
+```{r singleR_and_phase_vs_clustering_plots, fig.width=12, fig.height=12, echo=F}
+df <- as.data.frame(round(prop.table(table(so@meta.data[[so@misc$sel_res_col]], interaction(so$Phase, so$pruned.labels_singleR_fine)), margin = 2)*100, digits = 2))
+colnames(df) <- c("cluster", "phase_cell_type", "percentage")
+print(ggplot(df, aes(x = phase_cell_type, y = percentage))+
+  geom_bar(stat = "identity", aes(fill = cluster))+
+  theme_bw()+
+  coord_flip()+
+  scale_x_discrete(limits = rev(levels(df$phase_cell_type))))
+  df2 <- as.data.frame(round(prop.table(table(interaction(so$Phase, so$pruned.labels_singleR_fine), so@meta.data[[so@misc$sel_res_col]]), margin = 2)*100, digits = 2))
+colnames(df2) <- c("phase_cell_type", "cluster", "percentage")
+print(ggplot(df2, aes(x = cluster, y = percentage))+
+  geom_bar(stat = "identity", aes(fill = phase_cell_type))+
+  theme_bw()+
+  coord_flip()+
+  scale_x_discrete(limits = rev(levels(df2$cluster))))
+```
+
+## Session info
+
+```{r, echo=F}
+sessionInfo()
+```

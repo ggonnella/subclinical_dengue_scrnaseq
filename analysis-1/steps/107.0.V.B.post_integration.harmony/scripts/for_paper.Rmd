@@ -1,0 +1,103 @@
+---
+title: "Inden Project | B cells | Analysis by condition | For the paper"
+author: "Giorgio Gonnella"
+date: 2024-08-16
+output:
+  html_document:
+    theme: sandstone
+params:
+  pfx: "/srv/baia/"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE, warning = FALSE, comment = FALSE, echo = TRUE)
+
+library(Seurat)
+library(viridis)
+library(ggplot2)
+library(ggrepel)
+library(ggExtra)
+library(gplots)
+library(RColorBrewer)
+library(reshape2)
+library(ggsci)
+library(dplyr)
+library(scProportionTest)
+library(pheatmap)
+
+prj_root <- paste0(params$pfx, "inden/")
+analysis_root <- paste0(prj_root, "analysis-1/")
+
+input_step_dir <- paste0(analysis_root, "steps/107.0.P.B.integration.harmony/")
+input_var_dir <- paste0(input_step_dir, "results/vars/")
+
+this_step_dir <- paste0(analysis_root, "steps/107.0.V.B.analysis.post_integration/")
+plots_outdir <- paste0(this_step_dir, "results/plots/")
+dir.create(plots_outdir, recursive = T)
+#tables_outdir <- paste0(this_step_dir, "results/tables/")
+#dir.create(tables_outdir, recursive = T)
+
+helper_dir <- paste0(prj_root, "helpers/")
+source(paste0(helper_dir, "combined_proportion_plot.R"))
+```
+
+```{r load_data, echo=FALSE}
+so <- readRDS(file = paste0(input_var_dir, "integrated_so.rds"))
+```
+
+```{r umap_clustering, fig.align="center", fig.width=10, fig.height=6, echo=F}
+plt <- DimPlot(object = so, reduction = "umapharm",
+        group.by = so@misc$sel_res_col, label = TRUE,
+        cols = so@misc$cluster_cols,
+        split.by = "clinical_condition")
+fname = paste0(plots_outdir, "B.umap.by_cond.clustering.svg")
+ggsave(fname, plot = plt, device = "svg")
+plt
+```
+
+```{r singleR_fine_umap, fig.width=12, fig.height=6, echo=F}
+plt <- DimPlot(object = so, reduction = "umapharm",
+        group.by = "pruned.labels_singleR_fine",
+        cols = so@misc$fctype_cols, label = F, repel = TRUE,
+        split.by = "clinical_condition")
+plt <- plt + labs(x = "UMAP Harmony 1", y = "UMAP Harmony 2")
+fname = paste0(plots_outdir, "B.umap.by_cond.singleR_fine.svg")
+ggsave(fname, plot = plt, device = "svg")
+plt
+```
+
+```{r single_cell_types_umap_selected, fig.width=10, fig.height=6, echo=F}
+celltype <- "Plasmablasts"
+highl <- WhichCells(so,
+                      expression = pruned.labels_singleR_fine == celltype)
+plt <- DimPlot(so, reduction = "umapharm",
+          cells.highlight = highl, cols.highlight = "darkblue", split.by = "clinical_condition",
+          cols = "grey") + ggtitle(celltype) + theme(legend.position = "none")
+fname = paste0(plots_outdir, "B.umap.by_cond.plasmablasts.svg")
+ggsave(fname, plot = plt, device = "svg")
+```
+
+```{r phase_markers4, fig.height=6, fig.width=10, echo=F}
+plt <- FeaturePlot(so, features = "MKI67",
+            reduction = "umapharm", split.by = "clinical_condition",
+            shape.by="Phase")
+fname = paste0(plots_outdir, "B.phase_marker.MKI67.svg")
+ggsave(fname, plot = plt, device = "svg")
+plt
+```
+
+```{r phase, echo=F, fig.height=6, fig.width=10}
+plt <- DimPlot(object = so, reduction = "umapharm",
+        group.by = "Phase", split.by = "clinical_condition",
+        cols = so@misc$phase_cols) +
+  ggtitle("UMAP plot, colored by phase")
+fname = paste0(plots_outdir, "B.umap.by_cond.phase.svg")
+ggsave(fname, plot = plt, device = "svg")
+plt
+```
+
+# Session info
+
+```{r session_info, echo=FALSE}
+sessionInfo()
+```

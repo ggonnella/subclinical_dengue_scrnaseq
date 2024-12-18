@@ -1,0 +1,580 @@
+---
+title: "Inden Project | B cells | Analysis by condition | Overview"
+author: "Giorgio Gonnella"
+date: 2024-06-27
+output:
+  html_document:
+    theme: sandstone
+params:
+  pfx: "/srv/baia/"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE, warning = FALSE, comment = FALSE)
+
+library(Seurat)
+library(viridis)
+library(ggplot2)
+library(ggrepel)
+library(ggExtra)
+library(gplots)
+library(RColorBrewer)
+library(reshape2)
+library(ggsci)
+library(dplyr)
+library(scProportionTest)
+library(pheatmap)
+
+prj_root <- paste0(params$pfx, "inden/")
+analysis_root <- paste0(prj_root, "analysis-1/")
+
+input_step_dir <- paste0(analysis_root, "steps/107.0.P.B.integration.harmony/")
+input_var_dir <- paste0(input_step_dir, "results/vars/")
+
+this_step_dir <- paste0(analysis_root, "steps/107.0.V.B.analysis.post_integration/")
+plots_outdir <- paste0(this_step_dir, "results/plots/")
+dir.create(plots_outdir, recursive = T)
+
+helpers_dir <- paste0(prj_root, "helpers/")
+source(paste0(helpers_dir, "combined_proportion_plot.R"))
+```
+
+```{r load_data, echo=FALSE}
+so <- readRDS(file = paste0(input_var_dir, "integrated_so.rds"))
+```
+
+## Clinical condition table
+
+```{r clinical_condition, results="asis", echo=F}
+print(knitr::kable(table(
+        so$clinical_condition)))
+cat("\n\n")
+print(knitr::kable(as.data.frame.matrix(table(so$sample,
+                   so$clinical_condition))))
+```
+
+## Clinical condition on UMAP plot
+
+### Overall
+
+```{r, fig.align="center", echo=FALSE, fig.width=12, fig.height=6}
+DimPlot(object = so, reduction = "umapharm",
+        group.by = "clinical_condition",
+        cols = so@misc$cond_cols) +
+  ggtitle("UMAP plot, colored by clinical condition")
+```
+
+### By sample
+
+```{r, fig.align="center", echo=FALSE, fig.width=12, fig.height=12}
+DimPlot(object = so, reduction = "umapharm",
+        group.by = "clinical_condition",
+        cols = so@misc$cond_cols,
+        split.by = "sample", ncol = 3) +
+  NoLegend() +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "orange1") +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "orange1") +
+  ggtitle("UMAP plot, colored by condition, splitted by sample")
+```
+
+### Phase
+
+```{r phase, echo=F, fig.width=12}
+plt <- DimPlot(object = so, reduction = "umapharm",
+        group.by = "Phase", split.by = "clinical_condition",
+        cols = so@misc$phase_cols) +
+  ggtitle("UMAP plot, colored by phase")
+fname = paste0(plots_outdir, "umap.by_cond.phase.svg")
+ggsave(fname, plot = plt, device = "svg")
+plt
+```
+
+#### Phase markers
+
+```{r phase_markers1, fig.height=5, fig.width=12, echo=F}
+FeaturePlot(so, features = "PCNA",
+            reduction = "umapharm", split.by = "clinical_condition",
+            shape.by="Phase")
+```
+
+```{r phase_markers2, fig.height=5, fig.width=12, echo=F}
+FeaturePlot(so, features = "TOP2A",
+            reduction = "umapharm", split.by = "clinical_condition",
+            shape.by="Phase")
+```
+
+```{r phase_markers3, fig.height=5, fig.width=12, echo=F}
+FeaturePlot(so, features = "MCM6",
+            reduction = "umapharm", split.by = "clinical_condition",
+            shape.by="Phase")
+```
+
+```{r phase_markers4, fig.height=5, fig.width=12, echo=F}
+plt <- FeaturePlot(so, features = "MKI67",
+            reduction = "umapharm", split.by = "clinical_condition",
+            shape.by="Phase")
+fname = paste0(plots_outdir, "phase_marker.MKI67.svg")
+ggsave(fname, plot = plt, device = "svg")
+plt
+```
+
+## Clinical condition and unsupervised clustering
+
+```{r selected_clustering_resolution, echo=F}
+g.b = so@misc$sel_res_col
+print(paste0("Selected clustering resolution: ",
+             so@misc$sel_res))
+```
+
+```{r, echo=F}
+knitr::kable(table(so$clinical_condition,
+      so@meta.data[[g.b]], exclude = NULL))
+```
+
+```{r umap_clustering, fig.align="center", fig.width=12, fig.height=6, echo=F}
+DimPlot(object = so, reduction = "umapharm",
+        group.by = g.b, label = TRUE,
+        cols = so@misc$cluster_cols,
+        split.by = "clinical_condition")
+```
+
+### Sample contributions to clusters
+
+```{r cond_subsets, echo=FALSE}
+conditions <- levels(so$clinical_condition)
+cond_subset <- list()
+for (cond in conditions) {
+  cond_subset[[cond]] <- subset(so,
+                                subset = clinical_condition == cond)
+  cond_subset[[cond]]$sample <- droplevels(cond_subset[[cond]]$sample)
+}
+```
+
+```{r sample_vs_cl, echo=FALSE, results="asis"}
+sample_vs_cl <- list()
+for (cond in conditions) {
+  subset_table <- table(cond_subset[[cond]]@meta.data[[g.b]],
+                        cond_subset[[cond]]$sample)
+  cat(paste0("*Condition: ", cond, "*\n\n"))
+  print(knitr::kable(subset_table))
+  cat("\n\n")
+  sample_vs_cl[[cond]] <- as.data.frame(round(prop.table(subset_table, margin=1)*100, digits = 2))
+  colnames(sample_vs_cl[[cond]])[1:2] <- c("Cluster", "SampleID")
+  levels(sample_vs_cl[[cond]]$Cluster) <- paste("Cl", levels(sample_vs_cl[[cond]]$Cluster), sep = "_")
+}
+```
+
+```{r sample_vs_cl_plots, fig.width=12, fig.height=6, echo=FALSE}
+for (cond in conditions) {
+  print(ggplot(sample_vs_cl[[cond]], aes(x = Cluster, y = Freq, fill = SampleID))+
+    ggtitle(cond)+
+    geom_bar(stat = "identity", alpha = .98)+
+    coord_flip()+
+    theme_minimal()+
+    scale_fill_manual(values = so@misc$sample_cols))
+}
+```
+
+```{r cl_vs_sample, echo=FALSE, results="asis"}
+cl_vs_sample <- list()
+for (cond in conditions) {
+  subset_table <- table(cond_subset[[cond]]$sample,
+                        cond_subset[[cond]]@meta.data[[g.b]])
+  cat(paste0("*Condition: ", cond, "*\n\n"))
+  print(knitr::kable(subset_table))
+  cat("\n\n")
+  cl_vs_sample[[cond]] <- as.data.frame(round(prop.table(subset_table, margin=1)*100, digits = 2))
+  colnames(cl_vs_sample[[cond]])[1:2] <- c("SampleID", "Cluster")
+  levels(cl_vs_sample[[cond]]$Cluster) <- paste("Cl", levels(cl_vs_sample[[cond]]$Cluster), sep = "_")
+}
+```
+
+```{r cl_vs_sample_plots, fig.width=12, fig.height=6, echo=FALSE}
+cols <- so@misc$cluster_cols
+names(cols) <- paste0("Cl_", names(so@misc$cluster_cols))
+for (cond in conditions) {
+  print(ggplot(cl_vs_sample[[cond]], aes(x = SampleID, y = Freq, fill = Cluster))+
+    ggtitle(cond)+
+    geom_bar(stat = "identity", alpha = .98)+
+    coord_flip()+
+    theme_minimal()+
+    scale_fill_manual(values = cols))
+}
+```
+
+## Cell types
+
+SingleR fine cell type annotations
+
+```{r singleR_fine_umap, fig.width=12, fig.height=6, echo=F}
+plt <- DimPlot(object = so, reduction = "umapharm",
+        group.by = "pruned.labels_singleR_fine",
+        cols = so@misc$fctype_cols, label = F, repel = TRUE,
+        split.by = "clinical_condition")
+plt <- plt + ggtitle("B cells subtype assignments by SingleR")
+plt <- plt + labs(x = "UMAP Harmony 1", y = "UMAP Harmony 2")
+fname = paste0(plots_outdir, "umap.by_cond.singleR_fine.svg")
+ggsave(fname, plot = plt, device = "svg")
+plt
+```
+
+```{r table_fine_celltypes_per_cond, echo=F}
+knitr::kable(as.data.frame.matrix(round(prop.table(table(so$clinical_condition,
+  so$pruned.labels_singleR_fine), margin = 2)*100, digits = 2)))
+```
+
+```{r celltype_df_f_prep, echo=F}
+celltype_df_f <- list()
+for (cond in conditions) {
+  celltype_df_f[[cond]] <- as.data.frame(round(prop.table(table(cond_subset[[cond]]$sample,
+                                                              cond_subset[[cond]]$pruned.labels_singleR_fine),
+                                                        margin = 2)*100, digits = 2))
+  colnames(celltype_df_f[[cond]]) <- c("sample_id", "cell_type", "percentage")
+  # remove sample which are not in the current condition
+  celltype_df_f[[cond]] <- celltype_df_f[[cond]][celltype_df_f[[cond]]$sample_id %in% unique(cond_subset[[cond]]$sample),]
+  celltype_df_f[[cond]]$sample_id <- factor(celltype_df_f[[cond]]$sample_id)
+}
+```
+
+```{r celltype_df_f_plots, fig.width=12, fig.height=4, echo=F}
+for (cond in conditions) {
+  print(ggplot(celltype_df_f[[cond]], aes(x = cell_type, y = percentage))+
+    geom_bar(stat = "identity", aes(fill = sample_id))+
+    ggtitle(cond)+
+    scale_fill_manual(values = so@misc$sample_cols)+
+    theme_bw()+
+    coord_flip()+
+    scale_x_discrete(limits = rev(levels(celltype_df_f[[cond]]$cell_type))))
+}
+```
+
+```{r table_cond_per_fine_celltypes, echo=F}
+knitr::kable(as.data.frame.matrix(round(prop.table(table(
+  so$pruned.labels_singleR_fine,
+  so$clinical_condition), margin = 2)*100, digits = 2)))
+```
+
+```{r celltype_df_fr_prep, echo=F}
+celltype_df_fr <- list()
+for (cond in conditions) {
+  celltype_df_fr[[cond]] <- as.data.frame(round(prop.table(table(
+        cond_subset[[cond]]$pruned.labels_singleR_fine,
+        cond_subset[[cond]]$sample),
+          margin = 2)*100, digits = 2))
+  colnames(celltype_df_fr[[cond]]) <- c("cell_type", "sample_id", "percentage")
+  # remove sample which are not in the current condition
+  celltype_df_fr[[cond]] <- celltype_df_fr[[cond]][celltype_df_fr[[cond]]$sample_id %in% unique(cond_subset[[cond]]$sample),]
+  celltype_df_fr[[cond]]$sample_id <- factor(celltype_df_fr[[cond]]$sample_id)
+}
+```
+
+```{r celltype_df_fr_plots, fig.width=12, fig.height=5, echo=F}
+for (cond in conditions) {
+  print(ggplot(celltype_df_fr[[cond]], aes(x = sample_id, y = percentage))+
+    geom_bar(stat = "identity", aes(fill = cell_type))+
+    ggtitle(cond)+
+    scale_fill_manual(values = so@misc$fctype_cols)+
+    theme_bw()+
+    coord_flip()+
+    scale_x_discrete(limits = rev(levels(celltype_df_fr[[cond]]$sample_id)))) +
+    theme(
+      plot.margin = margin(t = 50, r = 120, b = 50, l = 10)
+    )
+}
+```
+
+### SingleR labels proportion test
+
+```{r}
+cell_type_counts <- so@meta.data %>%
+  group_by(pruned.labels_singleR_fine, clinical_condition) %>%
+  summarise(count = n()) %>%
+  ungroup()
+
+total_counts <- cell_type_counts %>%
+  group_by(clinical_condition) %>%
+  summarise(total = sum(count))
+
+relative_counts <- cell_type_counts %>%
+  left_join(total_counts, by = "clinical_condition") %>%
+  mutate(relative_count = count / total) %>%
+  select(clinical_condition, pruned.labels_singleR_fine, relative_count)
+
+cell_type_counts$pruned.labels_singleR_fine <-
+  factor(cell_type_counts$pruned.labels_singleR_fine,
+         levels = levels(so$pruned.labels_singleR_fine))
+```
+
+```{r}
+plt1 <- ggplot(cell_type_counts, aes(x = count, y = pruned.labels_singleR_fine, fill = clinical_condition)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  theme_minimal() +
+  labs(x = "Count", y = "Cell Type", title = "Frequency of Cell Types by Condition") +
+  scale_fill_manual(values = so@misc$cond_cols) +
+  theme(axis.text.y = element_text(size = 12), 
+        axis.text.x = element_text(size = 12), 
+        axis.title = element_text(size = 14),
+        legend.title = element_text(size = 14),
+        legend.text = element_text(size = 12))
+print(plt1)
+```
+
+```{r}
+plt2 <- ggplot(relative_counts, aes(x = relative_count, y = pruned.labels_singleR_fine, fill = clinical_condition)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  theme_minimal() +
+  labs(x = "Proportion", y = "Cell Type", title = "Relative Frequency of Cell Types by Condition") +
+  scale_fill_manual(values = so@misc$cond_cols) +
+  theme(axis.text.y = element_text(size = 12), 
+        axis.text.x = element_text(size = 12), 
+        axis.title = element_text(size = 14),
+        legend.title = element_text(size = 14),
+        legend.text = element_text(size = 12))
+print(plt2)
+```
+
+```{r singleR_proportion_test, echo=T}
+so_su <- sc_utils(so)
+prop_test <- permutation_test(so_su,
+                              cluster_identity = "pruned.labels_singleR_fine.abbrev",
+                              sample_1 = "Inapparent", sample_2 = "Hospitalized",
+                              sample_identity = "clinical_condition",
+                              n_permutations = 1000)
+```
+
+```{r proportion_plot, fig.width=8, fig.height=8, echo=F}
+so$cell_group <- NA
+for (group in names(so@misc$fctype_group)) {
+  so$cell_group <-
+    ifelse(so$pruned.labels_singleR_fine %in% so@misc$fctype_group[[group]],
+           group, so$cell_group)
+}
+
+prop_test@meta_data$cell_group <- NA
+for (group in names(so@misc$fctype_group)) {
+  prop_test@meta_data$cell_group <-
+    ifelse(prop_test@meta_data$pruned.labels_singleR_fine %in% so@misc$fctype_group[[group]],
+           group, prop_test@meta_data$cell_group)
+}
+
+plt <- combined_permutation_test_plot(so, prop_test,
+                                      celltype_col = "pruned.labels_singleR_fine.abbrev",
+                                      condition_col = "clinical_condition",
+                                      condition_title = "Clinical Condition",
+                                      condition_cols = so@misc$cond_cols)
+print(plt)
+```
+
+### Heatmap of cell type proportions
+
+```{r}
+so$cond_sample <-
+  paste0(substr(so$clinical_condition, 1, 4),
+         "-", so$sample)
+ggData <- as.matrix(prop.table(table(so$pruned.labels_singleR_fine,
+                                     so$cond_sample), margin = 2))
+plt <- pheatmap(ggData,
+         cluster_rows = FALSE, cutree_cols = 2, 
+         display_numbers = TRUE, number_format = "%.3f", angle_col = 315,
+         width = 4, height = 6)
+plt
+```
+
+### Single cell types in UMAP
+
+```{r single_cell_types_umap, fig.width=12, fig.height=6, echo=F}
+for (celltype in unique(so$pruned.labels_singleR_fine)) {
+  highl <- WhichCells(so,
+                      expression = pruned.labels_singleR_fine == celltype)
+  print(DimPlot(so, reduction = "umapharm",
+          cells.highlight = highl, cols.highlight = "darkblue", split.by = "clinical_condition",
+          cols = "grey") + ggtitle(celltype) + theme(legend.position = "none"))
+}
+```
+
+```{r single_cell_types_umap_selected, echo=F}
+celltype <- "Plasmablasts"
+highl <- WhichCells(so,
+                      expression = pruned.labels_singleR_fine == celltype)
+plt <- DimPlot(so, reduction = "umapharm",
+          cells.highlight = highl, cols.highlight = "darkblue", split.by = "clinical_condition",
+          cols = "grey") + ggtitle(celltype) + theme(legend.position = "none")
+fname = paste0(plots_outdir, "umap.by_cond.plasmablasts.svg")
+ggsave(fname, plot = plt, device = "svg")
+```
+
+## SingleR vs clustering
+
+```{r singleR_cl_tab1, results="asis", echo=F}
+for (cond in conditions) {
+  cat(paste0("*Condition: ", cond, "*\n\n"))
+  print(knitr::kable(as.data.frame.matrix(
+          table(cond_subset[[cond]]@meta.data[[g.b]],
+                cond_subset[[cond]]$pruned.labels_singleR_fine))))
+  cat("\n\n")
+}
+```
+
+```{r singleR_cl_tab2, results="asis", echo=F}
+for (cond in conditions) {
+  cat(paste0("*Condition: ", cond, "*\n\n"))
+  print(knitr::kable(as.data.frame.matrix(addmargins(round(prop.table(table(cond_subset[[cond]]@meta.data[[g.b]],
+          cond_subset[[cond]]$pruned.labels_singleR_fine), margin = 1)*100, digits = 2), margin = 2))))
+  cat("\n\n")
+}
+```
+
+```{r singleR_cl_tab3, results="asis", echo=F}
+for (cond in conditions) {
+  cat(paste0("*Condition: ", cond, "*\n\n"))
+  print(knitr::kable(as.data.frame.matrix(addmargins(round(prop.table(table(
+          cond_subset[[cond]]$pruned.labels_singleR_fine,
+          cond_subset[[cond]]@meta.data[[g.b]]), margin = 1)*100, digits = 2), margin = 2))))
+  cat("\n\n")
+}
+```
+
+```{r singleR_cl_df_prep, echo=F}
+celltype_df_f <- list()
+for (cond in conditions) {
+  celltype_df_f[[cond]] <- as.data.frame(round(prop.table(table(cond_subset[[cond]]@meta.data[[g.b]],
+                                                              cond_subset[[cond]]$pruned.labels_singleR_fine),
+                                                        margin = 2)*100, digits = 2))
+  colnames(celltype_df_f[[cond]]) <- c("cluster_id", "cell_type", "percentage")
+  # remove cluster which are not in the current condition
+  celltype_df_f[[cond]] <- celltype_df_f[[cond]][celltype_df_f[[cond]]$cluster_id %in% unique(cond_subset[[cond]]@meta.data[[g.b]]),]
+  celltype_df_f[[cond]]$cluster_id <- factor(celltype_df_f[[cond]]$cluster_id)
+}
+```
+
+```{r singleR_cl_df_plots, fig.width=12, fig.height=6, echo=F}
+for (cond in conditions) {
+  print(ggplot(celltype_df_f[[cond]], aes(x = cell_type, y = percentage))+
+    geom_bar(stat = "identity", aes(fill = cluster_id))+
+    ggtitle(cond)+
+    scale_fill_manual(values = so@misc$cluster_cols)+
+    theme_bw()+
+    coord_flip()+
+    scale_x_discrete(limits = rev(levels(celltype_df_f[[cond]]$cell_type))))
+}
+```
+
+```{r singleR_cl_df_fr_prep, echo=F}
+celltype_df_fr <- list()
+for (cond in conditions) {
+  celltype_df_fr[[cond]] <- as.data.frame(round(prop.table(table(
+        cond_subset[[cond]]$pruned.labels_singleR_fine,
+        cond_subset[[cond]]@meta.data[[g.b]]),
+          margin = 2)*100, digits = 2))
+  colnames(celltype_df_fr[[cond]]) <- c("cell_type", "cluster_id", "percentage")
+  # remove sample which are not in the current condition
+  celltype_df_fr[[cond]] <- celltype_df_fr[[cond]][celltype_df_fr[[cond]]$cluster_id %in% unique(cond_subset[[cond]]@meta.data[[g.b]]),]
+  celltype_df_fr[[cond]]$cluster_id <- factor(celltype_df_fr[[cond]]$cluster_id)
+}
+```
+
+```{r singleR_cl_df_fr_plots, fig.width=12, fig.height=5, echo=F}
+for (cond in conditions) {
+  print(ggplot(celltype_df_fr[[cond]], aes(x = cluster_id, y = percentage))+
+    geom_bar(stat = "identity", aes(fill = cell_type))+
+    ggtitle(cond)+
+    scale_fill_manual(values = so@misc$fctype_cols)+
+    theme_bw()+
+    coord_flip()+
+    scale_x_discrete(limits = rev(levels(celltype_df_fr[[cond]]$cluster_id)))) +
+    theme(
+      plot.margin = margin(t = 50, r = 120, b = 50, l = 10)
+    )
+}
+```
+
+## SingleR vs Phase
+
+```{r singleR_phase_tab1, results="asis", echo=F}
+for (cond in conditions) {
+  cat(paste0("*Condition: ", cond, "*\n\n"))
+  print(knitr::kable(as.data.frame.matrix(
+          table(cond_subset[[cond]]$Phase,
+                cond_subset[[cond]]$pruned.labels_singleR_fine))))
+  cat("\n\n")
+}
+```
+
+```{r singleR_phase_tab2, results="asis", echo=F}
+for (cond in conditions) {
+  cat(paste0("*Condition: ", cond, "*\n\n"))
+  print(knitr::kable(as.data.frame.matrix(addmargins(round(prop.table(table(cond_subset[[cond]]$Phase,
+          cond_subset[[cond]]$pruned.labels_singleR_fine), margin = 1)*100, digits = 2), margin = 2))))
+  cat("\n\n")
+}
+```
+
+```{r singleR_phase_tab3, results="asis", echo=F}
+for (cond in conditions) {
+  cat(paste0("*Condition: ", cond, "*\n\n"))
+  print(knitr::kable(as.data.frame.matrix(addmargins(round(prop.table(table(
+          cond_subset[[cond]]$pruned.labels_singleR_fine,
+          cond_subset[[cond]]$Phase), margin = 1)*100, digits = 2), margin = 2))))
+  cat("\n\n")
+}
+```
+
+```{r singleR_phase_df_prep, echo=F}
+celltype_df_f <- list()
+for (cond in conditions) {
+  celltype_df_f[[cond]] <- as.data.frame(round(prop.table(table(cond_subset[[cond]]$Phase,
+                                                              cond_subset[[cond]]$pruned.labels_singleR_fine),
+                                                        margin = 2)*100, digits = 2))
+  colnames(celltype_df_f[[cond]]) <- c("phase", "cell_type", "percentage")
+  # remove cluster which are not in the current condition
+  celltype_df_f[[cond]] <- celltype_df_f[[cond]][celltype_df_f[[cond]]$phase %in% unique(cond_subset[[cond]]$Phase),]
+  celltype_df_f[[cond]]$phase <- factor(celltype_df_f[[cond]]$phase)
+}
+```
+
+```{r singleR_phase_df_plots, fig.width=12, fig.height=6, echo=F}
+for (cond in conditions) {
+  print(ggplot(celltype_df_f[[cond]], aes(x = cell_type, y = percentage))+
+    geom_bar(stat = "identity", aes(fill = phase))+
+    ggtitle(cond)+
+    scale_fill_manual(values = so@misc$phase_cols)+
+    theme_bw()+
+    coord_flip()+
+    scale_x_discrete(limits = rev(levels(celltype_df_f[[cond]]$cell_type))))
+}
+```
+
+```{r singleR_phase_df_fr_prep, echo=F}
+celltype_df_fr <- list()
+for (cond in conditions) {
+  celltype_df_fr[[cond]] <- as.data.frame(round(prop.table(table(
+        cond_subset[[cond]]$pruned.labels_singleR_fine,
+        cond_subset[[cond]]$Phase),
+          margin = 2)*100, digits = 2))
+  colnames(celltype_df_fr[[cond]]) <- c("cell_type", "phase", "percentage")
+  # remove sample which are not in the current condition
+  celltype_df_fr[[cond]] <- celltype_df_fr[[cond]][celltype_df_fr[[cond]]$phase %in% unique(cond_subset[[cond]]$Phase),]
+  celltype_df_fr[[cond]]$phase <- factor(celltype_df_fr[[cond]]$phase)
+}
+```
+
+```{r singleR_phase_df_fr_plots, fig.width=12, fig.height=5, echo=F}
+for (cond in conditions) {
+  print(ggplot(celltype_df_fr[[cond]], aes(x = phase, y = percentage))+
+    geom_bar(stat = "identity", aes(fill = cell_type))+
+    ggtitle(cond)+
+    scale_fill_manual(values = so@misc$fctype_cols)+
+    theme_bw()+
+    coord_flip()+
+    scale_x_discrete(limits = rev(levels(celltype_df_fr[[cond]]$phase)))) +
+    theme(
+      plot.margin = margin(t = 50, r = 120, b = 50, l = 10)
+    )
+}
+```
+
+# Session info
+
+```{r session_info, echo=FALSE}
+sessionInfo()
+```

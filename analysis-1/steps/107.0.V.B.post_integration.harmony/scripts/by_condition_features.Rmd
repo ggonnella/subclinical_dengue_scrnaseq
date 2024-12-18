@@ -1,0 +1,121 @@
+---
+title: "Inden Project | B cells | Analysis by condition | Features"
+author: "Giorgio Gonnella"
+date: 2024-06-27
+output:
+  html_document:
+    theme: sandstone
+params:
+  pfx: "/srv/baia/"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE, warning = FALSE, comment = FALSE, echo = TRUE)
+
+library(Seurat)
+library(viridis)
+library(ggplot2)
+library(ggrepel)
+library(ggExtra)
+library(gplots)
+library(RColorBrewer)
+library(reshape2)
+library(ggsci)
+library(dplyr)
+
+prj_root <- paste0(params$pfx, "inden/")
+analysis_root <- paste0(prj_root, "analysis-1/")
+
+input_step_dir <- paste0(analysis_root, "steps/107.0.P.B.integration.harmony/")
+input_var_dir <- paste0(input_step_dir, "results/vars/")
+```
+
+```{r load_data, echo=FALSE}
+so <- readRDS(file = paste0(input_var_dir, "integrated_so.rds"))
+```
+
+## Gene plots
+
+Selected clustering resolution: 0.8
+
+```{r selected_res, echo=FALSE}
+selected_res = so@misc$sel_res_col
+```
+
+```{r gene_plots, fig.width=12, fig.height=12, echo=F, eval=F}
+feature_sets <- list(
+  c("FUT8", "FUT8-AS1", "MIR122HG"),
+  c("JUN","FOS", "CD40"),
+  c("CCR7", "CD44", "CD83"),
+  c("IL12A", "TCL1A", "FCRL4"),
+  c("TRAF4", "RELB", "MAP3K8"),
+  c("MALAT1", "B2M", "CLEC2B")
+)
+
+# decomment the following for turning off these plots
+# feature_sets=c()
+
+for (feature_set in feature_sets) {
+  print(FeaturePlot(so, reduction = "umapharm",
+            features = feature_set, split.by = "clinical_condition",
+            min.cutoff = 0, max.cutoff = 6, keep.scale="all"))
+  print(VlnPlot(so, feature = feature_set, split.by = "clinical_condition",
+                group.by = "clinical_condition", y.max = 8))
+  print(VlnPlot(so, feature = feature_set, split.by = "clinical_condition",
+                group.by = "orig.ident", y.max = 8))
+  print(VlnPlot(so, feature = feature_set, split.by = "clinical_condition",
+                group.by = selected_res, y.max = 8))
+  print(VlnPlot(so, feature = feature_set, split.by = "clinical_condition",
+                group.by = "pruned.labels_singleR_fine", y.max = 8))
+}
+
+```
+
+### Plots for single features
+
+```{r gene_plots_features, echo=F}
+features <-
+  c(
+    "ANXA1", "ARNTL",
+    "B2M",
+    "CCL5", "CCR7", "CD40", "CD44", "CD79B", "CD83", "CD96", "CLEC2B", "CXCR5",
+    "DDIT4", "DUSP1",
+    "EEF1B2",
+    "FCRL4", "FOS", "FOSB", "FOXP3", "FUT8", "FUT8-AS1",
+    "GDPD5", "GZMA", "GZMB", "GZMK",
+    "HIST1H1D", "HIST1H1E", "HIST1H4C", "HLA-DRB1",
+    "ICAM1", "IL12A", "IFNG", "IRF1", "IFI6", "IGHD", "IRF3", "ISG20",
+    "JUN",
+    "KIT", "KLRB1",
+    "MALAT1", "MAP3K8", "MIR122HG", "MIR34AHG", "MKI67", "MYADM", "MCM3",
+    "NFKB1",
+    "OASL",
+    "PRDM1", "PRF1", "PTPRC", "PRKCQ", "PDGFRB",
+    "RASSF5", "RELB",
+    "SLC2A1",
+    "TCL1A", "TGFB1", "TGFBR3", "TRAF4", "TXNIP", "TOB1",
+    "XBP1"
+    )
+# decomment the following for turning off these plots
+# features=c()
+
+for (feature in features) {
+  print(FeaturePlot(so, reduction = "umapharm",
+            features = feature, split.by = "clinical_condition",
+            min.cutoff = 0, max.cutoff = 6, keep.scale="all"))
+  print(VlnPlot(so, feature = feature, split.by = "clinical_condition",
+                group.by = "clinical_condition", y.max = 8))
+  print(VlnPlot(so, feature = feature, split.by = "clinical_condition",
+                group.by = "orig.ident", y.max = 8))
+  print(VlnPlot(so, feature = feature, split.by = "clinical_condition",
+                group.by = selected_res, y.max = 8))
+  print(VlnPlot(so, feature = feature, split.by = "clinical_condition",
+                group.by = "pruned.labels_singleR_fine", y.max = 8))
+}
+```
+
+## Session info
+
+```{r session_info, echo=FALSE}
+sessionInfo()
+```
