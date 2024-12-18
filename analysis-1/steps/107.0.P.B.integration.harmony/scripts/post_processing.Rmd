@@ -1,0 +1,173 @@
+---
+title: "InDen Project | B cells | Post-processing after Harmony integration"
+author: "Giorgio Gonnella"
+date: 2024-06-27
+output:
+  html_document:
+    clean: FALSE
+    theme: sandstone
+params:
+  pfx: "/srv/baia/"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE, warning = FALSE, comment = FALSE, echo = TRUE)
+
+
+library(Seurat)
+library(viridis)
+library(ggplot2)
+library(ggrepel)
+library(ggExtra)
+library(gplots)
+library(RColorBrewer)
+library(reshape2)
+library(ggsci)
+library(dplyr)
+library(harmony)
+library(mclust)
+
+prj_root <- paste0(params$pfx, "inden/")
+analysis_root <- paste0(prj_root, "analysis-1/")
+
+this_step_dir <- paste0(analysis_root, "steps/107.0.P.B.integration.harmony/")
+var_dir <- paste0(this_step_dir, "results/vars/")
+
+```
+
+```{r load, echo=F}
+so <- readRDS(file = paste0(var_dir, "integrated_so.raw.rds"))
+
+```
+
+# Sample IDs
+
+```{r create_sample_column, echo=T}
+so$sample <- sub("TC_SC03_(S\\d+B)_so", "\\1",
+                                so$orig.ident)
+levels_sample <- sub("TC_SC03_(S\\d+B)_so", "\\1",
+                     levels(so$orig.ident))
+so$sample <-
+  factor(so$sample, levels=levels_sample)
+```
+
+# Cell types
+
+## Remove unchar cells
+
+There are none, so this is disabled.
+
+```{r remove_unchar, echo=TRUE}
+#so <- subset(so,
+#                            pruned.labels_singleR_fine != "unchar")
+```
+
+## Sorting order
+
+```{r sorting_order}
+so$pruned.labels_singleR_fine <-
+  factor(so$pruned.labels_singleR_fine, levels =
+  c("Naive B cells", "Non-switched memory B cells", "Switched memory B cells",
+    "Plasmablasts", "Exhausted B cells"))
+```
+
+# Abbreviated fine celltype labels
+
+```{r abbreviate_cell_types, echo=TRUE}
+so@misc$pruned.labels_singleR_fine.abbrev <-
+  c("Naive", "Non-sw.mem.", "Sw.mem.", "Plasmab.", "Exh.")
+
+names(so@misc$pruned.labels_singleR_fine.abbrev) <-
+  levels(so$pruned.labels_singleR_fine)
+```
+
+```{r apply_abbreviated_labels, echo=TRUE}
+so$pruned.labels_singleR_fine.abbrev <-
+  factor(as.vector(so@misc$pruned.labels_singleR_fine.abbrev[
+    so$pruned.labels_singleR_fine]),
+    levels =so@misc$pruned.labels_singleR_fine.abbrev[
+      levels(so$pruned.labels_singleR_fine)])
+```
+
+# Clinical condition
+
+```{r create_clinical_condition_column, echo=TRUE}
+conditions <- c("Inapparent", "Hospitalized")
+hosp_n = c("1", "5", "6", "7", "15", "16")
+so$clinical_condition <-
+  ifelse(so$orig.ident %in% paste0("TC_SC03_S", hosp_n, "B_so"),
+         conditions[2], conditions[1])
+so$clinical_condition <-
+  so$clinical_condition <-
+    factor(so$clinical_condition, levels = conditions)
+```
+
+# Select clustering resolution
+
+```{r selected_resolution, echo=TRUE}
+so@misc$sel_res <- "0.4"
+so@misc$sel_res_col <- paste0("harmsnn_res.",
+                                             so@misc$sel_res)
+```
+
+# Color schemes
+
+```{r color_scheme_for_main_labels}
+so@misc$mctype_cols <-
+  colorRampPalette(brewer.pal(6, "Accent"))(
+    length(unique(so$pruned.labels_singleR_main)))
+names(so@misc$mctype_cols) <-
+  levels(so$pruned.labels_singleR_main)
+```
+
+```{r color_scheme_for_fine_labels}
+so@misc$fctype_cols <- c(
+  "Naive B cells" = "#1f78b4",         # dark blue
+  "Plasmablasts" = "#238b45",  # darker green
+  "Non-switched memory B cells" = "#8c564b", # brown
+  "Switched memory B cells" = "#ffa500", # orange
+  "Exhausted B cells" = "#9e9ac8"  # light purple
+)
+```
+
+```{r color_scheme_for_conditions}
+so@misc$cond_cols <- c(
+  "Inapparent" = "darkgreen",
+  "Hospitalized" = "darkred"
+)
+```
+
+```{r color_scheme_for_samples}
+so@misc$sample_cols <-
+  colorRampPalette(brewer.pal(8, name = "Accent"))(
+                  length(unique(so$sample)))
+names(so@misc$sample_cols) <-
+  levels(so$sample)
+```
+
+```{r color_scheme_for_clusters}
+g.b = so@misc$sel_res_col
+so@misc$cluster_cols <-
+  colorRampPalette(brewer.pal(8, name = "Set1"))(
+              length(unique(so@meta.data[[g.b]])))
+names(so@misc$cluster_cols) <-
+  levels(so@meta.data[[g.b]])
+```
+
+```{r color_scheme_for_phases}
+so@misc$phase_cols <- c("#00AFBB", "#E7B800", "#FC4E07")
+names(so@misc$phase_cols) <- c("G1", "G2M", "S")
+```
+
+## Saving data
+
+```{r save, echo=TRUE}
+saveRDS(so, file = paste0(var_dir, "integrated_so.rds"))
+
+```
+
+## Session info
+
+```{r, echo=F}
+sessionInfo()
+```

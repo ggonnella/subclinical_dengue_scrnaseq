@@ -1,0 +1,111 @@
+---
+title: "InDen Project | B cells | Harmony Integration"
+author: "Giorgio Gonnella"
+date: 2024-06-27
+output:
+  html_document:
+    theme: sandstone
+params:
+  pfx: "/srv/baia/"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE, warning = FALSE, comment = FALSE, echo = TRUE)
+
+# required libraries
+library(Seurat)
+library(viridis)
+library(ggplot2)
+library(ggrepel)
+library(ggExtra)
+library(gplots)
+library(RColorBrewer)
+library(reshape2)
+library(ggsci)
+library(dplyr)
+library(harmony)
+
+prj_root <- paste0(params$pfx, "inden/")
+analysis_root <- paste0(prj_root, "analysis-1/")
+
+prev_step_dir <- paste0(analysis_root, "steps/106.0.P.B.merging.seurat/")
+input_var_dir <- paste0(prev_step_dir, "results/vars/")
+
+this_step_dir <- paste0(analysis_root, "steps/107.0.P.B.integration.harmony/")
+var_dir <- paste0(this_step_dir, "results/vars/")
+dir.create(var_dir, recursive = TRUE)
+
+helpers_dir <- paste0(prj_root, "helpers/")
+
+#SC_gal_tools_dir <- paste0(this_step_dir, "scripts/smella_scripts/")
+
+SEED=154
+source(paste0(helpers_dir,"factor_resolution.R"))
+```
+
+```{r load file, include = FALSE}
+# importing already processed merged object
+so <- readRDS(file = paste0(input_var_dir, "merged_so.rds"))
+
+```
+
+In the integration step, the Harmony algorithm is used to integrate the data
+from the different samples. It is a method which aims to correct for batch
+effects while preserving the biological signal.
+
+After the integration, the data is clustered and visualized using UMAP.
+
+# Running Harmony
+
+```{r, echo=TRUE}
+set.seed(SEED)
+so <- RunHarmony(object = so,
+                 group.by.vars=c("orig.ident"),
+                 reduction = "pca", reduction.save="harmony")
+```
+
+# Repeat analysis pipeline after integration
+
+## UMAP
+
+```{r setting_umap_parameters, echo=TRUE}
+myDims <- 1:40
+```
+
+```{r umap , message=FALSE, warning=FALSE}
+set.seed(SEED)
+tryCatch({
+so <- RunUMAP(object = so, dims = myDims,
+              reduction = "harmony", reduction.name = "umapharm")
+}, error = function(e) {
+message ("Load file error", e$message)
+})
+
+```
+
+## Clustering
+
+```{r setting_clustering_parameters, echo=TRUE}
+reS <- c(0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8)
+```
+
+```{r clustering, message=FALSE, warning=FALSE, echo=TRUE}
+set.seed(SEED)
+so <- FindNeighbors(object = so, dims = myDims,
+                        reduction = "harmony", graph.name = "harmsnn")
+so <- FindClusters(object = so, resolution = reS,
+                        graph.name = "harmsnn")
+so <- factor_resolution(so)
+```
+
+# Saving data
+
+```{r save, echo=TRUE}
+saveRDS(so, file = paste0(var_dir, "integrated_so.raw.rds"))
+```
+
+# Session info
+
+```{r session_info}
+sessionInfo()
+```
