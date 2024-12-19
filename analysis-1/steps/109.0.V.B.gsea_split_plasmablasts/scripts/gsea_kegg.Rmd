@@ -1,0 +1,119 @@
+---
+title: "Inden | T cells | Gene Sets Expression Analysis | KEGG"
+author: "Giorgio Gonnella"
+date: 2024-04-29
+output:
+  html_document:
+    clean: FALSE
+    theme: sandstone
+params:
+  pfx: "/srv/baia/"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE, warning = FALSE, comment = FALSE, echo = TRUE)
+
+library(ggplot2)
+library(enrichplot)
+library(clusterProfiler)
+library(pathview)
+library(Organism.dplyr)
+library(fgsea)
+library(DOSE)
+
+prj_root <- paste0(params$pfx, "inden/")
+analysis_root <- paste0(prj_root, "analysis-1/")
+
+prev_step_dir <- paste0(analysis_root, "steps/109.0.P.B.de_split_plasmablasts/")
+input_tables_dir_s <- paste0(prev_step_dir, "results/celltypes_s5/")
+
+this_step_dir <- paste0(analysis_root, "steps/109.0.V.B.gsea_split_plasmablasts/")
+plots_dir_sk <- paste0(this_step_dir, "results/celltypes_s5/kegg/")
+dir.create(plots_dir_sk, recursive=T)
+for (subdir in c("tables", "barplots", "dotplots", "cnet_plots", "emap_plots",
+                "ridgeplots", "gsea_plots")) {
+  dir.create(paste0(plots_dir_sk, subdir), recursive=T)
+}
+
+organism <- "org.Hs.eg.db"
+require(org.Hs.eg.db)
+keytypes(org.Hs.eg.db)
+```
+
+```{r define_gsekegg_function}
+input_tables_dir <- input_tables_dir_s
+plots_dir <- plots_dir_sk
+input_files <- list.files(path = input_tables_dir,
+                          pattern = "all_genes.*.tsv")
+for (input_file in input_files) {
+  print(input_file)
+  group <- gsub("^all_genes.(.*).DESeq2.de.tsv$", "\\1", input_file)
+  print(group)
+  markers <- read.table(paste0(input_tables_dir, input_file), header=T)
+  genes <- markers$avg_log2FC
+  names(genes) <- markers$gene
+  genes <- sort(genes, decreasing = TRUE)
+  names(genes) <- mapIds(org.Hs.eg.db, names(genes),
+                         column="ENTREZID", keytype="SYMBOL")
+  gse <- gseKEGG(geneList = genes,
+                 keyType = "ncbi-geneid",
+                 minGSSize = 3,
+                 maxGSSize = 800,
+                 pvalueCutoff = 0.05,
+                 pAdjustMethod = "BH")
+  if (nrow(gse) == 0) {
+    print(paste0(group, ": No significant gene sets enrichment found"))
+  } else {
+    gse_df <- as.data.frame(gse)
+    fname <- paste0(plots_dir, "tables/", group, ".gsea.KEGG.tsv")
+    write.csv(gse_df, file = fname, row.names = FALSE)
+
+    top_terms <- gse_df[1:20, ]
+    p <- ggplot(top_terms, aes(x = reorder(Description, NES), y = NES, fill = p.adjust)) +
+      geom_bar(stat = "identity") +
+      coord_flip() +
+      scale_fill_gradient(low = "blue", high = "red") +
+      labs(title = "Top 20 Enriched KEGG Terms", x = "KEGG Term",
+           y = "Normalized Enrichment Score (NES)") +
+      theme_minimal() +
+      theme(axis.text.y = element_text(size = 10),
+            axis.title.x = element_text(size = 12),
+            axis.title.y = element_text(size = 12))
+    fname <- paste0(plots_dir, "barplots/", group, ".barplot.pdf")
+    ggsave(fname, plot = p, width = 10, height = 8)
+
+
+    pdf(paste0(plots_dir, "dotplots/", group, ".dotplot.pdf"), width = 10, height = 12)
+    p<-dotplot(gse, showCategory = 10, split = ".sign") + facet_grid(.~.sign)
+    print(p)
+    dev.off()
+
+    pdf(paste0(plots_dir, "cnet_plots/", group, ".cnet_plot.pdf"), width = 10, height = 16)
+    p<-cnetplot(gse, categorySize = "pvalue", foldChange = genes, showCategory = 3)
+    print(p)
+    dev.off()
+
+    pdf(paste0(plots_dir, "emap_plots/", group, ".emap_plot.pdf"), width = 10, height = 8)
+    p<-emapplot(pairwise_termsim(gse), showCategory = 10)
+    print(p)
+    dev.off()
+
+    pdf(paste0(plots_dir, "ridgeplots/", group, ".ridgeplot.pdf"), width = 8, height = 18)
+    p<-ridgeplot(gse) + labs(x = "enrichment distribution")
+    print(p)
+    dev.off()
+
+    plot <- gseaplot(gse, by = "all", title = gse$Description[1], geneSetID = 1)
+    print(plot)
+    ggsave(plot = plot, file=paste0(plots_dir, "gsea_plots/", group, ".gsea_plot.pdf"),
+           width=8, height=8)
+
+  }
+}
+```
+
+# Session info
+
+```{r}
+sessionInfo()
+```
