@@ -1,0 +1,45 @@
+---
+title: "Inden Project | B cells | run ScMetabolism"
+author: "Giorgio Gonnella"
+date: 2024-08-27
+output:
+  html_document:
+    theme: sandstone
+params:
+  pfx: "/srv/baia/"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE, warning = FALSE, comment = FALSE, echo = TRUE)
+
+library(Seurat)
+library(ggplot2)
+library(ggsci)
+library(dplyr)
+library(scMetabolism)
+
+prj_root <- paste0(params$pfx, "inden/")
+analysis_root <- paste0(prj_root, "analysis-1/")
+
+input_step_dir <- paste0(analysis_root, "steps/107.0.P.B.integration.harmony/")
+input_var_dir <- paste0(input_step_dir, "results/vars/")
+```
+
+```{r load_data, echo=FALSE}
+so <- readRDS(file = paste0(input_var_dir, "integrated_so.rds"))
+```
+
+```{r}
+# This code can only run on HPC nodes, since it takes about 80 Gb of memory
+countexp.Seurat <- sc.metabolism.Seurat(obj = so,
+                                        method = "VISION", imputation = F,
+                                        ncores = 2, metabolism.type = "KEGG")
+fname = paste0(input_var_dir, "scMetabolism_so.rds")
+saveRDS(countexp.Seurat, file = fname)
+```
+
+# Session info
+
+```{r session_info, echo=FALSE}
+sessionInfo()
+```

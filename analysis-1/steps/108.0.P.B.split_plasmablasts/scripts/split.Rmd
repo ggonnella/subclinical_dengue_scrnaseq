@@ -1,0 +1,139 @@
+---
+title: "InDen Project | B cells | Split Plasmablasts"
+author: "Giorgio Gonnella"
+date: 2024-06-27
+output:
+  html_document:
+    theme: sandstone
+params:
+  pfx: "/srv/baia/"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE, warning = FALSE, comment = FALSE, echo = TRUE)
+
+# required libraries
+library(Seurat)
+library(viridis)
+library(ggplot2)
+library(ggrepel)
+library(ggExtra)
+library(gplots)
+library(RColorBrewer)
+library(reshape2)
+library(ggsci)
+library(dplyr)
+library(harmony)
+
+prj_root <- paste0(params$pfx, "inden/")
+analysis_root <- paste0(prj_root, "analysis-1/")
+
+prev_step_dir <- paste0(analysis_root, "steps/107.0.P.B.integration.harmony/")
+input_var_dir <- paste0(prev_step_dir, "results/vars/")
+
+this_step_dir <- paste0(analysis_root, "steps/108.0.P.B.split_plasmablasts/")
+var_dir <- paste0(this_step_dir, "results/vars/")
+dir.create(var_dir, showWarnings = FALSE, recursive = TRUE)
+
+```
+
+```{r load, include = FALSE}
+# importing already processed merged object
+so <- readRDS(file = paste0(input_var_dir, "integrated_so.rds"))
+
+```
+
+
+The purpose of this step is to divide the plasmablasts according to
+their unsupervised clustering. The cluster 6 cells will be separated
+from the other cells, and called, respectively, "Proliferating plasmablasts"
+and "Non-proliferating plasmablasts".
+
+# Before splitting
+
+```{r before}
+table(so$pruned.labels_singleR_fine)
+```
+
+# Splitting
+
+```{r splitting, echo=TRUE}
+g.b = so@misc$sel_res_col
+sel_cluster = "6"
+
+so$pruned.labels_singleR_fine.mod <- so$pruned.labels_singleR_fine
+so$pruned.labels_singleR_fine.mod <-
+  ifelse(so$pruned.labels_singleR_fine ==
+         "Plasmablasts",
+         ifelse(so@meta.data[[g.b]] == sel_cluster,
+                "Proliferating plasmablasts",
+                "Non-proliferating plasmablasts"),
+         as.character(so$pruned.labels_singleR_fine))
+```
+
+Alternative splitting, by Phase (G2M, S, G1)
+stored in a different slot
+
+```{r split_by_phase, echo=TRUE}
+so$pruned.labels_singleR_fine.mod_by_phase <- so$pruned.labels_singleR_fine
+so$pruned.labels_singleR_fine.mod_by_phase <-
+  ifelse(so$pruned.labels_singleR_fine ==
+         "Plasmablasts",
+         ifelse(so$Phase %in% c("G2M", "S"),
+                "Proliferating plasmablasts",
+                "Non-proliferating plasmablasts"),
+         as.character(so$pruned.labels_singleR_fine))
+```
+
+# After splitting
+
+```{r after}
+table(so$pruned.labels_singleR_fine.mod)
+```
+
+# Post-processing
+
+## Sort fine celltype labels
+
+```{r fctype_sort, echo=TRUE}
+order <- c("Naive B cells", "Non-switched memory B cells", "Switched memory B cells",
+    "Non-proliferating plasmablasts", "Proliferating plasmablasts", "Exhausted B cells")
+so$pruned.labels_singleR_fine.mod <-
+  factor(so$pruned.labels_singleR_fine.mod, levels = order)
+so$pruned.labels_singleR_fine.mod_by_phase <-
+  factor(so$pruned.labels_singleR_fine.mod_by_phase, levels = order)
+```
+
+## Abbreviated labels
+
+```{r abbrev_labels, echo=TRUE}
+so@misc$pruned.labels_singleR_fine.abbrev[[
+    "Proliferating plasmablasts"]] <- "Prol. plasmab."
+so@misc$pruned.labels_singleR_fine.abbrev[[
+    "Non-proliferating plasmablasts"]] <- "Non-prol. plasmab."
+
+so$pruned.labels_singleR_fine.mod.abbrev <- factor(
+  as.vector(so@misc$pruned.labels_singleR_fine.abbrev[as.character(so$pruned.labels_singleR_fine.mod)]),
+  levels = so@misc$pruned.labels_singleR_fine.abbrev[levels(so$pruned.labels_singleR_fine.mod)]
+)
+```
+
+## Color schemes
+```{r color_scheme_for_fine_labels}
+so@misc$fctype_mod_cols <-
+  c(so@misc$fctype_cols,
+   "Proliferating plasmablasts" = "#ffa9ff",  # Light Pink
+   "Non-proliferating plasmablasts" = "#ac2355")  # Dark Pink
+```
+
+## Saving data
+
+```{r, echo=TRUE}
+saveRDS(so, file = paste0(var_dir, "integrated_so.rds"))
+```
+
+# Session info
+
+```{r}
+sessionInfo()
+```
