@@ -129,7 +129,7 @@ so@misc$fctype_mod_cols <-
 ## Saving data
 
 ```{r, echo=TRUE}
-saveRDS(so, file = paste0(var_dir, "integrated_so.rds"))
+saveRDS(so, file = paste0(var_dir, "splitted_so.rds"))
 ```
 
 # Session info
