@@ -1,5 +1,5 @@
 ---
-title: "InDen Project | T cells | Harmony Integration"
+title: "InDen T cells | Integration using Harmony method"
 author: "Giorgio Gonnella"
 date: 2024-04-23
 output:
@@ -10,7 +10,7 @@ params:
 ---
 
 ```{r setup, include = FALSE}
-knitr::opts_chunk$set(message = FALSE, warning = FALSE, comment = FALSE, echo = TRUE)
+knitr::opts_chunk$set(message = FALSE, warning = FALSE, echo = TRUE)
 
 library(harmony)
 library(Seurat)
@@ -27,11 +27,10 @@ library(dplyr)
 prj_root <- paste0(params$pfx, "inden/")
 analysis_root <- paste0(prj_root, "analysis-1/")
 
-prev_step_dir <- paste0(analysis_root, "steps/006.0.C.T.merging.seurat/")
+prev_step_dir <- paste0(analysis_root, "steps/006.0.P.T.merging.seurat/")
 input_var_dir <- paste0(prev_step_dir, "results/vars/")
 
-
-this_step_dir <- paste0(analysis_root, "steps/007.0.C.T.integration.harmony/")
+this_step_dir <- paste0(analysis_root, "steps/007.0.P.T.integration.harmony/")
 var_dir <- paste0(this_step_dir, "results/vars/")
 dir.create(var_dir, showWarnings = FALSE, recursive = TRUE)
 
@@ -40,11 +39,7 @@ source(paste0(helpers_dir, "factor_resolution.R"))
 ```
 
 ```{r load_file, echo = FALSE}
-tryCatch({
-  so <- readRDS(paste0(input_var_dir, "merged_so.rds"))
-}, error = function(e){
-  message("Load file error", e$message)
-})
+so <- readRDS(paste0(input_var_dir, "merged_so.rds"))
 ```
 
 In the integration step, the Harmony algorithm is used to integrate the data

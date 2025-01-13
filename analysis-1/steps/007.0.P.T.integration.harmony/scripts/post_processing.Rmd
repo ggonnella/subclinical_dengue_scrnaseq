@@ -1,5 +1,5 @@
 ---
-title: "InDen Project | T cells | Post-processing after Harmony integration"
+title: "InDen T cells | Post-processing after Harmony integration"
 author: "Giorgio Gonnella"
 date: 2024-06-09
 output:
@@ -39,6 +39,9 @@ so <- readRDS(paste0(var_dir, "integrated_so.raw.rds"))
 
 # Sample IDs
 
+Create simpler sample IDs, saved under the `sample` column
+(e.g. `TC_SC03_S1T_so` -> `S1T`). Sample will be a factor.
+
 ```{r create_sample_column, echo=T}
 so$sample <- sub("TC_SC03_(S\\d+T)_so", "\\1",
                                 so$orig.ident)
@@ -52,6 +55,8 @@ so$sample <-
 
 ## Rename unchar celltype label
 
+Rename `unchar` to `Uncharacterized` in the main and fine celltype labels.
+
 ```{r rename_unchar_to_uncharacterized, echo=F}
 so$pruned.labels_singleR_main <-
   gsub("unchar", "Uncharacterized",
@@ -61,7 +66,10 @@ so$pruned.labels_singleR_fine <-
        so$pruned.labels_singleR_fine)
 ```
 
-# Sum-up gamma-delta T cells
+## Sum-up gamma-delta T cells
+
+Sum-up `Vd2 gd T cells` and `Non-Vd2 gd T cells` into `Gamma-delta T cells`.
+
 ```{r sum_up_gd, echo=TRUE}
 so$pruned.labels_singleR_fine <-
   ifelse(so$pruned.labels_singleR_fine == "Vd2 gd T cells",
@@ -74,6 +82,9 @@ so$pruned.labels_singleR_fine <-
 ```
 
 ## Group and sort fine celltype labels
+
+Create groups of fine celltype labels (CD4, CD8 and others) and sort them in
+a meaningful order
 
 ```{r fctype_groups, echo=TRUE}
 so@misc$fctype_group <- list()
@@ -103,7 +114,11 @@ for (group in names(so@misc$fctype_group)) {
 }
 ```
 
-# Abbreviated fine celltype labels
+## Abbreviated fine celltype labels
+
+Abbreviate fine celltype labels for plots where there is not enough space to
+use the full names. The abbreviated cell types are stored in the
+column `pruned.labels_singleR_fine.abbrev` and are a factor.
 
 ```{r abbreviate_cell_types, echo=TRUE}
 so@misc$pruned.labels_singleR_fine.abbrev <-
@@ -151,6 +166,9 @@ so$pruned.labels_singleR_fine.abbrev <-
 
 # Clinical condition
 
+Create a column `clinical_condition` with two levels: `Subclinical` and
+`Hospitalized`.
+
 ```{r create_clinical_condition_column, echo=TRUE}
 conditions <- c("Subclinical", "Hospitalized")
 hosp_n = as.character(1:7)
@@ -164,12 +182,26 @@ so$clinical_condition <-
 
 # Select clustering resolution
 
+Select the clustering resolution to be used for the downstream analysis.
+
 ```{r selected_resolution, echo=TRUE}
 so@misc$sel_res <- "1.2"
 so@misc$sel_res_col <- paste0("harmsnn_res.", so@misc$sel_res)
 ```
 
 # Color schemes
+
+Define color schemes for the main cell type labels, fine cell type labels,
+clinical conditions, samples, clusters and cell cycle phases, in order to have
+consistent colors across all plots.
+
+The colors are saved in some columns of the `so@misc` slot:
+- `mctype_cols` for the main cell type labels
+- `fctype_cols` for the fine cell type labels
+- `cond_cols` for the clinical conditions
+- `sample_cols` for the samples
+- `cluster_cols` for the clusters
+- `phase_cols` for the cell cycle phases
 
 ```{r color_scheme_for_main_labels}
 so@misc$mctype_cols <-
@@ -242,6 +274,9 @@ so@misc$ctg_backcols <-
 
 # Remove outliers
 
+Remove cells in cell types with less than 10 cells and clusters with less than
+10 cells.
+
 ```{r remove_celltype_outliers, echo=TRUE}
 min_cells_per_celltype <- 10
 celltype_sizes <- table(so$pruned.labels_singleR_fine)
@@ -270,6 +305,9 @@ so@meta.data[[so@misc$sel_res_col]] <-
 ```
 
 # Cell proportions permutations test
+
+Perform a permutation test to assess the differences in cell type proportions.
+
 ```{r cell_proportions_permutation_test, echo=TRUE}
 so@misc$proptest <- permutation_test(sc_utils(so),
                        cluster_identity = "pruned.labels_singleR_fine.abbrev",
