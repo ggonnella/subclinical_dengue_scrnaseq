@@ -1,5 +1,5 @@
 ---
-title: "InDen Project | T cells | Merging"
+title: "InDen T cells | Merging individual samples to a single Seurat object"
 author: "Giorgio Gonnella"
 date: 2024-04-24
 output: html_document
@@ -8,7 +8,7 @@ params:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(message=F, warning=F, comment = F, echo =T)
+knitr::opts_chunk$set(message=F, warning=F, echo=F)
 
 library(Seurat)
 library(viridis)
@@ -44,7 +44,7 @@ object.
 
 The files are imported as a list of Seurat objects.
 
-```{r importing, echo=TRUE}
+```{r importing, echo=T}
 tcells_files <- list.files(path = input_var_dir_prevanalysis,
                            pattern = "_filt.Rdata")
 tcells_ls <- sapply(tcells_files, function(x)

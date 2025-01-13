@@ -1,17 +1,16 @@
 ---
-title: "InDen Project | T cells | Data visualization after merging"
+title: "InDen T cells | Data visualization after merging, before integration"
 author: "Giorgio Gonnella"
 date: 2024-04-24
 output:
   html_document:
-    clean: FALSE
     theme: sandstone
 params:
   pfx: "/srv/baia/"
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(message=FALSE, warning=FALSE, comment = FALSE, echo = TRUE)
+knitr::opts_chunk$set(message=FALSE, warning=FALSE, echo = TRUE)
 
 library(Seurat)
 library(viridis)
