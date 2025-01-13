@@ -296,7 +296,8 @@ print(ggplot(df2, aes(x = cluster, y = percentage))+
 
 #### Cell phase
 
-Plots comparing cell type assignments divided by cell phase assignment with the unsupervised clustering
+Plots comparing cell type assignments divided by cell phase assignment with the
+unsupervised clustering
 
 ```{r singleR_and_phase_vs_clustering_plots, fig.width=12, fig.height=12, echo=F}
 df <- as.data.frame(round(

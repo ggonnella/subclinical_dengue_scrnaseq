@@ -83,7 +83,7 @@ so$sample <- sub(".*(S\\d+T).*", "\\1", so$orig.ident)
 Add clinical condition metadata.
 
 ```{r add_clinical_condition, echo=TRUE}
-conditions <- c("Hospitalized", "Mild")
+conditions <- c("Hospitalized", "Subclinical")
 hosp_n = as.character(1:7)
 so$clinical_condition <-
   ifelse(so$orig.ident %in% paste0("TC_SC03_S", hosp_n, "T_so"),
@@ -122,12 +122,15 @@ so <- FindVariableFeatures(object = so, assay = "RNA",
 
 Removing unwanted source of variation in the highly variable genes
 
-```{r unwanted_genes, echo=TRUE}
+```{r genesets, echo=TRUE}
 so@misc$genesets$TCR <- grep(pattern = "^TR[AB][VC]", so@assays$RNA@var.features, value = TRUE)
 so@misc$genesets$IG <- c(grep(pattern = "^IG[HLK][VDJ]", so@assays$RNA@var.features, value = TRUE),
               c("IGHM", "IGHD", "IGHE", "IGHA[12]", "IGHG[1234]", "IGKC", "IGLC[1234567]", "AC233755.1"))
 so@misc$genesets$MT <- grep(pattern = "^MT", so@assays$RNA@var.features, value = TRUE)
 so@misc$genesets$Ribo <- grep(pattern = "^RP[LS]", so@assays$RNA@var.features, value = TRUE)
+```
+
+```{r unwanted_genes, echo=T}
 unwanted_genes <- c(so@misc$genesets$TCR,
                     so@misc$genesets$IG,
                     so@misc$genesets$MT,
@@ -148,7 +151,6 @@ so <- ScaleData(object = so,
             assay = "RNA")
 ```
 
-
 ## Linear dimension reduction (PCA)
 
 ```{r pca, echo=TRUE}
@@ -168,16 +170,14 @@ so <- RunUMAP(object = so, dims = myDims,
 
 ```{r clustering, echo=TRUE}
 reS <- c(0.2, 0.4, 0.6, 0.8, 1.0, 1.2)
-
 so <- FindNeighbors(object = so, dims = myDims)
 so <- FindClusters(object = so, resolution = reS)
-
 so <- factor_resolution(so)
 ```
 
 ## Saving Data
 
-```{r saving}
+```{r saving, echo=T}
 saveRDS(so, paste0(var_dir, "merged_so.rds"))
 ```
 
