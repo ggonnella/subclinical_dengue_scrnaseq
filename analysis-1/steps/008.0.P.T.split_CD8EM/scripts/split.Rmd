@@ -1,5 +1,5 @@
 ---
-title: "InDen Project | T cells | Split Effector Memory CD8+ cells"
+title: "InDen T cells | Split Effector Memory CD8+ cells"
 author: "Giorgio Gonnella"
 date: 2024-05-21
 output:
@@ -8,22 +8,15 @@ output:
     theme: sandstone
 params:
   pfx: "/srv/baia/"
+  libpath: "/home/giorgio/R-pkg-Seurat5/"
 ---
 
 ```{r setup, include = FALSE}
-knitr::opts_chunk$set(message = F, warning = F, comment = F, echo = T)
+knitr::opts_chunk$set(message=F, warning=F, echo=T)
+.libPaths(c(params$libpath, .libPaths()))
 
 library(Seurat)
-library(viridis)
-library(ggplot2)
-library(ggrepel)
-library(ggExtra)
-library(gplots)
-library(RColorBrewer)
-library(reshape2)
-library(ggsci)
-library(dplyr)
-library(harmony)
+library(scProportionTest)
 
 prj_root <- paste0(params$pfx, "inden/")
 analysis_root <- paste0(prj_root, "analysis-1/")
@@ -48,7 +41,7 @@ the other cells, and called, respectively,
 
 # Before splitting
 
-```{r before}
+```{r before, echo=F}
 table(so$pruned.labels_singleR_fine)
 ```
 
@@ -69,28 +62,17 @@ so$pruned.labels_singleR_fine.mod <-
          as.character(so$pruned.labels_singleR_fine))
 ```
 
-Alternative splitting, by Phase (G2M, S, G1)
-stored in a different slot
-
-```{r split_by_phase, echo=TRUE}
-so$pruned.labels_singleR_fine.mod_by_phase <-
-  so$pruned.labels_singleR_fine
-so$pruned.labels_singleR_fine.mod_by_phase <-
-  ifelse(so$pruned.labels_singleR_fine ==
-         "Effector memory CD8 T cells",
-         ifelse(so$Phase %in% c("G2M", "S"),
-                "Proliferating effector memory CD8 T cells",
-                "Non-proliferating effector memory CD8 T cells"),
-         as.character(so$pruned.labels_singleR_fine))
-```
-
 # After splitting
 
-```{r after}
+```{r after, echo=F}
 table(so$pruned.labels_singleR_fine.mod)
 ```
 
 # Post-processing
+
+Repeat the steps of Harmony post-processing (group cell types, abbreviate
+labels, create color schemes), adding the two additional cell types derived
+from splitting.
 
 ## Group and sort fine celltype labels
 
@@ -141,6 +123,16 @@ so@misc$fctype_mod_cols <-
   c(so@misc$fctype_cols,
    "Proliferating effector memory CD8 T cells" = "#ffa9ff",  # Light Pink
    "Non-proliferating effector memory CD8 T cells" = "#ac2355") # Dark Pink
+```
+
+## Cell proportions permutations test
+
+```{r cell_proportions_permutation_test, echo=TRUE}
+so@misc$proptest_mod <- permutation_test(sc_utils(so),
+                cluster_identity = "pruned.labels_singleR_fine.mod.abbrev",
+                sample_1 = "Subclinical", sample_2 = "Hospitalized",
+                sample_identity = "clinical_condition",
+                n_permutations = 1000)
 ```
 
 ## Saving data
