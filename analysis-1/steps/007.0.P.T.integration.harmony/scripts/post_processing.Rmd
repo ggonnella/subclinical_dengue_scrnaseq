@@ -152,7 +152,7 @@ so$pruned.labels_singleR_fine.abbrev <-
 # Clinical condition
 
 ```{r create_clinical_condition_column, echo=TRUE}
-conditions <- c("Mild", "Hospitalized")
+conditions <- c("Subclinical", "Hospitalized")
 hosp_n = as.character(1:7)
 so$clinical_condition <-
   ifelse(so$orig.ident %in% paste0("TC_SC03_S", hosp_n, "T_so"),
@@ -208,7 +208,7 @@ so@misc$fctype_cols <- c(
 
 ```{r color_scheme_for_conditions}
 so@misc$cond_cols <- c(
-  "Mild" = "darkblue",
+  "Subclinical" = "darkblue",
   "Hospitalized" = "darkred"
 )
 ```
@@ -273,7 +273,7 @@ so@meta.data[[so@misc$sel_res_col]] <-
 ```{r cell_proportions_permutation_test, echo=TRUE}
 so@misc$proptest <- permutation_test(sc_utils(so),
                        cluster_identity = "pruned.labels_singleR_fine.abbrev",
-                       sample_1 = "Mild", sample_2 = "Hospitalized",
+                       sample_1 = "Subclinical", sample_2 = "Hospitalized",
                        sample_identity = "clinical_condition",
                        n_permutations = 10000)
 ```

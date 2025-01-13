@@ -45,9 +45,7 @@ tryCatch({
 }, error = function(e){
   message("Load file error", e$message)
 })
-
 ```
-
 
 In the integration step, the Harmony algorithm is used to integrate the data
 from the different samples. It is a method which aims to correct for batch
