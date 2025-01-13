@@ -11,7 +11,6 @@ calculate_percentMito_sV3 <- function(seuratObj, mitoGenes, plot = TRUE, SC_gal_
     seuratObj@meta.data$percent.mito.cl <- cut(seuratObj@meta.data$percent.mito, 
                                                breaks = c(-1, .1, .15, .2, 1))
     if(plot){plot_pMito_nGenes_nUMI_sV3(seuratObj = seuratObj, title)}
-    
     return(seuratObj)
   }
 }
