@@ -1,0 +1,78 @@
+---
+title: "InDen T cells | Results of scMetabolism"
+author: "Giorgio Gonnella"
+date: 2024-08-29
+output:
+  html_document:
+    theme: sandstone
+params:
+  pfx: "/srv/baia/"
+  libpath: "/home/giorgio/R-pkg-Seurat5/"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message=F, warning=F, echo=F)
+.libPaths(c(params$libpath, .libPaths()))
+
+library(Seurat)
+library(ggplot2)
+
+prj_root <- paste0(params$pfx, "inden/")
+analysis_root <- paste0(prj_root, "analysis-1/")
+
+input_step_dir <- paste0(analysis_root, "steps/009.0.P.T.scMetabolism/")
+input_var_dir <- paste0(input_step_dir, "results/vars/")
+
+this_step_dir <- paste0(analysis_root, "steps/009.0.V.T.metabolism_plots/")
+tables_outdir <- paste0(this_step_dir, "results/tables/")
+plots_outdir <- paste0(this_step_dir, "results/plots/")
+dir.create(tables_outdir, recursive = T)
+dir.create(plots_outdir, recursive = T)
+
+helpers_dir <- paste0(prj_root, "helpers/")
+source(paste0(helpers_dir, "scMetabolism_helpers.R"))
+```
+
+```{r load_data, echo=FALSE}
+met <- readRDS(file = paste0(input_var_dir, "scMetabolism_so.rds"))
+```
+
+## Dim plots
+
+```{r dimplots}
+pathways = c("Glycolysis / Gluconeogenesis", "Oxidative phosphorylation",
+             "Citrate cycle (TCA cycle)")
+
+for (pathway in pathways) {
+  dimplot <- scMetabolismDimplot(met, pathway, "clinical_condition")
+  sanitized_label <- gsub(" ", "_", pathway)
+  sanitized_label <- gsub("[(]", "", sanitized_label)
+  sanitized_label <- gsub("[)]", "", sanitized_label)
+  sanitized_label <- gsub("/", "_", sanitized_label)
+  sanitized_label <- gsub("__", "_", sanitized_label)
+  sanitized_label <- gsub("__", "_", sanitized_label)
+  fname <- paste0(plots_outdir, "scMetabolism.Dimplot.T.",
+                  gsub(" ", "_", sanitized_label), ".svg")
+  ggsave(fname, plot = dimplot, device = "svg")
+  print(dimplot)
+}
+```
+
+## Dot plot
+
+```{r dotplot}
+dotplot <- DotPlot.metabolism(obj = met, pathway = pathways,
+                              phenotype = "pruned.labels_singleR_fine.abbrev",
+                              norm = "y")
+dotplot <- dotplot + scale_x_discrete(limits = levels(met$pruned.labels_singleR_fine.abbrev))
+dotplot <- dotplot + xlab(NULL) + ylab(NULL) + labs(color = "Score") + labs(size = "Score")
+fname <- paste0(plots_outdir, "scMetabolism.Dotplot.T.svg")
+ggsave(fname, plot = dotplot, device = "svg")
+print(dotplot)
+```
+
+# Session info
+
+```{r session_info, echo=FALSE}
+sessionInfo()
+```

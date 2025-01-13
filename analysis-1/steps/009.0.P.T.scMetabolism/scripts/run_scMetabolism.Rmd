@@ -1,0 +1,48 @@
+---
+title: "InDen T cells | run ScMetabolism"
+author: "Giorgio Gonnella"
+date: 2024-08-27
+output:
+  html_document:
+    theme: sandstone
+params:
+  pfx: "/srv/baia/"
+  libpath: "/home/giorgio/R-pkg-Seurat5/"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message=F, warning=F, echo=T)
+.libPaths(c(params$libpath, .libPaths()))
+
+library(Seurat)
+library(scMetabolism)
+
+prj_root <- paste0(params$pfx, "inden/")
+analysis_root <- paste0(prj_root, "analysis-1/")
+
+input_step_dir <- paste0(analysis_root, "steps/007.0.P.T.integration.harmony/")
+input_var_dir <- paste0(input_step_dir, "results/vars/")
+
+this_step_dir <- paste0(analysis_root, "steps/009.0.P.T.scMetabolism/")
+var_dir <- paste0(this_step_dir, "results/vars/")
+dir.create(var_dir, showWarnings = FALSE, recursive = TRUE)
+```
+
+```{r load_data, echo=FALSE}
+so <- readRDS(file = paste0(input_var_dir, "integrated_so.rds"))
+```
+
+```{r}
+# Make sure to have enough memory, this requires about 80 Gb
+countexp.Seurat <- sc.metabolism.Seurat(obj = so,
+                                        method = "VISION", imputation = F,
+                                        ncores = 2, metabolism.type = "KEGG")
+fname = paste0(var_dir, "scMetabolism_so.rds")
+saveRDS(countexp.Seurat, file = fname)
+```
+
+# Session info
+
+```{r session_info, echo=FALSE}
+sessionInfo()
+```
