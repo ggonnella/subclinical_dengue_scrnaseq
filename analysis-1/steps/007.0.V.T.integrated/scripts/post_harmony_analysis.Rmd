@@ -1,5 +1,5 @@
 ---
-title: "InDen Project | T cells | Results after Harmony integration"
+title: "InDen T cells | Results after Harmony integration"
 author: "Giorgio Gonnella"
 date: 2024-04-23
 output:
@@ -7,23 +7,17 @@ output:
     theme: sandstone
 params:
   pfx: "/srv/baia/"
+  libpath: "/home/giorgio/R-pkg-Seurat5/"
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(message = FALSE, warning = FALSE, comment = FALSE, echo = TRUE)
+knitr::opts_chunk$set(message=F, warning=F, echo=F)
+.libPaths(c(params$libpath, .libPaths()))
 
 library(Seurat)
 library(viridis)
 library(ggplot2)
-library(ggrepel)
-library(ggExtra)
-library(gplots)
 library(RColorBrewer)
-library(reshape2)
-library(ggsci)
-library(dplyr)
-library(harmony)
-library(mclust)
 
 prj_root <- paste0(params$pfx, "inden/")
 analysis_root <- paste0(prj_root, "analysis-1/")

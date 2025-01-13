@@ -7,23 +7,15 @@ output:
     theme: sandstone
 params:
   pfx: "/srv/baia/"
+  libpath: "/home/giorgio/R-pkg-Seurat5/"
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(message = FALSE, warning = FALSE, comment = FALSE, echo = TRUE)
+knitr::opts_chunk$set(message=F, warning=F, echo=F)
+.libPaths(c(params$libpath, .libPaths()))
 
 library(Seurat)
-library(viridis)
-library(ggplot2)
-library(ggrepel)
-library(ggExtra)
-library(gplots)
 library(RColorBrewer)
-library(reshape2)
-library(ggsci)
-library(dplyr)
-library(harmony)
-library(mclust)
 library(scProportionTest)
 
 prj_root <- paste0(params$pfx, "inden/")
@@ -313,7 +305,7 @@ so@misc$proptest <- permutation_test(sc_utils(so),
                        cluster_identity = "pruned.labels_singleR_fine.abbrev",
                        sample_1 = "Subclinical", sample_2 = "Hospitalized",
                        sample_identity = "clinical_condition",
-                       n_permutations = 10000)
+                       n_permutations = 1000)
 ```
 
 ## Saving data

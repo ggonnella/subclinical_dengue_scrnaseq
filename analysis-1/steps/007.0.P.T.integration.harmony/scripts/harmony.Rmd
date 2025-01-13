@@ -7,22 +7,15 @@ output:
     theme: sandstone
 params:
   pfx: "/srv/baia/"
+  libpath: "/home/giorgio/R-pkg-Seurat5/"
 ---
 
 ```{r setup, include = FALSE}
-knitr::opts_chunk$set(message = FALSE, warning = FALSE, echo = TRUE)
+knitr::opts_chunk$set(message=F, warning=F, echo=F)
+.libPaths(c(params$libpath, .libPaths()))
 
 library(harmony)
 library(Seurat)
-library(viridis)
-library(ggplot2)
-library(ggrepel)
-library(ggExtra)
-library(gplots)
-library(RColorBrewer)
-library(reshape2)
-library(ggsci)
-library(dplyr)
 
 prj_root <- paste0(params$pfx, "inden/")
 analysis_root <- paste0(prj_root, "analysis-1/")
@@ -75,8 +68,7 @@ so <- RunUMAP(object = so, dims = myDims,
 ## Clustering
 
 ```{r setting_clustering_parameters, echo = TRUE}
-reS <- c(0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 2.0, 3.0,
-         4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0)
+reS <- c(0.6, 0.9, 1.2, 2.5, 5.0, 10.0)
 ```
 
 ```{r clustering, message = FALSE, warning = FALSE, echo = TRUE}
