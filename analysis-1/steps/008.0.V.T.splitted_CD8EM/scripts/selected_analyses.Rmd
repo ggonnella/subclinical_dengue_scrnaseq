@@ -10,8 +10,7 @@ params:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(message = FALSE, warning = FALSE, comment = FALSE, echo = TRUE)
-
+knitr::opts_chunk$set(message = F, warning = F, comment = F, echo = T)
 
 library(Seurat)
 library(viridis)
@@ -33,7 +32,7 @@ analysis_root <- paste0(prj_root, "analysis-1/")
 input_step_dir <- paste0(analysis_root, "steps/008.0.P.T.split_CD8EM/")
 input_var_dir <- paste0(input_step_dir, "results/vars/")
 
-this_step_dir <- paste0(analysis_root, "steps/008.0.V.T.post_split_CD8EM/")
+this_step_dir <- paste0(analysis_root, "steps/008.0.V.T.splitted_CD8EM/")
 tables_outdir <- paste0(this_step_dir, "results/tables/")
 plots_outdir <- paste0(this_step_dir, "results/plots/")
 dir.create(tables_outdir, recursive = T)
@@ -45,9 +44,7 @@ source(paste0(gg_scripts_dir, "dimplot_helpers.R"))
 ```
 
 ```{r load_data, echo=FALSE}
-#load(file = paste0(input_var_dir, "TC_SC03_alltcells.Rdata"))
 so <- readRDS(file = paste0(input_var_dir, "splitted_CD8EM_so.rds"))
-
 ```
 
 # Splitted UMAP
@@ -92,13 +89,16 @@ cell_type_counts$pruned.labels_singleR_fine.mod <-
 ```
 
 ```{r}
-plt1 <- ggplot(cell_type_counts, aes(x = count, y = pruned.labels_singleR_fine.mod, fill = clinical_condition)) +
+plt1 <- ggplot(cell_type_counts, aes(x = count,
+                                     y = pruned.labels_singleR_fine.mod,
+                                     fill = clinical_condition)) +
   geom_bar(stat = "identity", position = "dodge") +
   theme_minimal() +
-  labs(x = "Count", y = "Cell Type", title = "Frequency of Cell Types by Condition") +
+  labs(x = "Count", y = "Cell Type",
+       title = "Frequency of Cell Types by Condition") +
   scale_fill_manual(values = so@misc$cond_cols) +
-  theme(axis.text.y = element_text(size = 12), 
-        axis.text.x = element_text(size = 12), 
+  theme(axis.text.y = element_text(size = 12),
+        axis.text.x = element_text(size = 12),
         axis.title = element_text(size = 14),
         legend.title = element_text(size = 14),
         legend.text = element_text(size = 12))
@@ -130,13 +130,16 @@ relative_counts <- cell_type_counts %>%
 ```
 
 ```{r}
-plt2 <- ggplot(relative_counts, aes(x = relative_count, y = pruned.labels_singleR_fine.mod, fill = clinical_condition)) +
+plt2 <- ggplot(relative_counts, aes(x = relative_count,
+                                    y = pruned.labels_singleR_fine.mod,
+                                    fill = clinical_condition)) +
   geom_bar(stat = "identity", position = "dodge") +
   theme_minimal() +
-  labs(x = "Proportion", y = "Cell Type", title = "Relative Frequency of Cell Types by Condition") +
+  labs(x = "Proportion", y = "Cell Type",
+       title = "Relative Frequency of Cell Types by Condition") +
   scale_fill_manual(values = so@misc$cond_cols) +
-  theme(axis.text.y = element_text(size = 12), 
-        axis.text.x = element_text(size = 12), 
+  theme(axis.text.y = element_text(size = 12),
+        axis.text.x = element_text(size = 12),
         axis.title = element_text(size = 14),
         legend.title = element_text(size = 14),
         legend.text = element_text(size = 12))
@@ -150,10 +153,10 @@ print(plt2)
 ```{r singleR_proportion_test, echo=T}
 so_su <- sc_utils(so)
 prop_test <- permutation_test(so_su,
-                              cluster_identity = "pruned.labels_singleR_fine.mod.abbrev",
-                              sample_1 = "Mild", sample_2 = "Hospitalized",
-                              sample_identity = "clinical_condition",
-                              n_permutations = 1000)
+                   cluster_identity = "pruned.labels_singleR_fine.mod.abbrev",
+                   sample_1 = "Subclinical", sample_2 = "Hospitalized",
+                   sample_identity = "clinical_condition",
+                   n_permutations = 1000)
 ```
 
 ## Plot
@@ -176,8 +179,9 @@ for (group in names(so@misc$fctype_group)) {
 }
 
 plt <- grouped_combined_permutation_test_plot(so, prop_test,
-            "pruned.labels_singleR_fine.mod.abbrev", "cell_group", "clinical_condition",
-            "Clinical Condition", so@misc$cond_cols, so@misc$ctg_backcols)
+            "pruned.labels_singleR_fine.mod.abbrev", "cell_group",
+            "clinical_condition", "Clinical Condition", so@misc$cond_cols,
+            so@misc$ctg_backcols)
 
 fname <- paste0(plots_outdir, "singleR_proportion_test.svg")
 ggsave(fname, plot = plt, device = "svg")

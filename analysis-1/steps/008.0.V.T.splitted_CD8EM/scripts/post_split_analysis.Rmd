@@ -34,7 +34,7 @@ analysis_root <- paste0(prj_root, "analysis-1/")
 input_step_dir <- paste0(analysis_root, "steps/008.0.P.T.split_CD8EM/")
 var_dir <- paste0(input_step_dir, "results/vars/")
 
-this_step_dir <- paste0(analysis_root, "steps/008.0.V.T.post_split_CD8EM/")
+this_step_dir <- paste0(analysis_root, "steps/008.0.V.T.splitted_CD8EM/")
 plots_outdir <- paste0(this_step_dir, "results/plots/")
 dir.create(plots_outdir, recursive = TRUE)
 ```

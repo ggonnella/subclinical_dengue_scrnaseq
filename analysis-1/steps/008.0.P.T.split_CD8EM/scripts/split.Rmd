@@ -11,7 +11,7 @@ params:
 ---
 
 ```{r setup, include = FALSE}
-knitr::opts_chunk$set(message = FALSE, warning = FALSE, comment = FALSE, echo = TRUE)
+knitr::opts_chunk$set(message = F, warning = F, comment = F, echo = T)
 
 library(Seurat)
 library(viridis)
@@ -40,11 +40,11 @@ dir.create(var_dir, showWarnings = FALSE, recursive = TRUE)
 so <- readRDS(paste0(input_var_dir, "integrated_so.rds"))
 ```
 
-The purpose of this step is to divide the effector memory CD8 cells according to
-their unsupervised clustering. The cluster 11 cells will be separated
-from the other cells, and called, respectively,
-"Proliferating effector memory CD8 T cells"
-and "Non-proliferating effector memory CD8 T cells".
+The purpose of this step is to divide the effector memory CD8 cells according
+to their unsupervised clustering. The cluster 11 cells will be separated from
+the other cells, and called, respectively,
+"Proliferating effector memory CD8 T cells" and
+"Non-proliferating effector memory CD8 T cells".
 
 # Before splitting
 
@@ -127,8 +127,10 @@ so@misc$pruned.labels_singleR_fine.abbrev[[
     "Non-proliferating effector memory CD8 T cells"]] <- "Non-prolif. CD8+ EM"
 
 so$pruned.labels_singleR_fine.mod.abbrev <- factor(
-  as.vector(so@misc$pruned.labels_singleR_fine.abbrev[as.character(so$pruned.labels_singleR_fine.mod)]),
-  levels = so@misc$pruned.labels_singleR_fine.abbrev[levels(so$pruned.labels_singleR_fine.mod)]
+  as.vector(so@misc$pruned.labels_singleR_fine.abbrev[
+              as.character(so$pruned.labels_singleR_fine.mod)]),
+  levels = so@misc$pruned.labels_singleR_fine.abbrev[
+              levels(so$pruned.labels_singleR_fine.mod)]
 )
 ```
 
