@@ -1,3 +1,8 @@
+library(ggplot2)
+library(gridExtra)
+#library(reshape2)
+library(pheatmap)
+
 #
 # Create a heatmap for a list of genes in multiple cell types,
 # starting from the output of the DE analysis.
@@ -45,6 +50,7 @@ DE_selected_genes_heatmap <- function(markers,
   for (cell_type_name in names(cell_types)) {
     cell_type = cell_types[[cell_type_name]]
     cell_data <- markers[[cell_type]]
+    cell_data$gene <- rownames(cell_data)
     filtered_data <- cell_data[cell_data$gene %in% genes_of_interest, ]
     filtered_data <- filtered_data[match(genes_of_interest, filtered_data$gene), ]
 

@@ -1,0 +1,124 @@
+---
+title: "InDen T cells | Gene differential expression tables"
+author: "Giorgio Gonnella"
+date: 2024-08-29
+output:
+  html_document:
+    theme: sandstone
+params:
+  pfx: "/srv/baia/"
+  libpath: "/home/giorgio/R-pkg-Seurat5/"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message=F, warning=F, echo=F)
+.libPaths(c(params$libpath, .libPaths()))
+
+library(Seurat)
+library(dplyr)
+library(data.table)
+library(EnhancedVolcano)
+
+prj_root <- paste0(params$pfx, "inden/")
+analysis_root <- paste0(prj_root, "analysis-1/")
+
+input_step_dir <- paste0(analysis_root, "steps/010.0.P.T.compute_de/")
+input_var_dir <- paste0(input_step_dir, "results/vars/")
+
+this_step_dir <- paste0(analysis_root, "steps/010.0.V.T.de_results/")
+p_adj_filt_tsv_dir <- paste0(this_step_dir, "results/tables/p_adj_filt/")
+dir.create(p_adj_filt_tsv_dir, showWarnings = FALSE, recursive = TRUE)
+unfiltered_tsv_dir <- paste0(this_step_dir, "results/tables/unfiltered/")
+dir.create(unfiltered_tsv_dir, showWarnings = FALSE, recursive = TRUE)
+vulcano_outdir <- paste0(this_step_dir, "results/plots/vulcano/")
+dir.create(vulcano_outdir, recursive = T, showWarnings = F)
+```
+
+```{r load_input_data}
+so <- readRDS(file = paste0(input_var_dir, "so_w_deseq.rds"))
+```
+
+```{r metadata}
+celltypes <- names(so@misc$de$pval_filt)
+cond_pairs_lbl <- "S_vs_H"
+```
+
+```{r strsanitize}
+strsanitize <- function(s) {
+  gsub(" ", "_", gsub("[^[:alnum:]]", "_", s))
+}
+```
+
+```{r vulcanoplots}
+for (ct in celltypes) {
+  data <- so@misc$de$pval_filt[[ct]]
+  fname <- paste0(vulcano_outdir, cond_pairs_lbl, ".",
+                  strsanitize(ct), ".png")
+  if (!is.null(data)) {
+    if (nrow(data) > 0) {
+      plt <- EnhancedVolcano(data, lab = rownames(data),
+                             x = 'avg_log2FC', y = 'p_val_adj',
+                             FCcutoff = 0.58, pCutoff = 0.05) +
+        ggtitle(paste0(cond_pairs_lbl, " | ", ct))
+      print(paste0("Writing file: ", fname))
+      ggsave(fname, plt, width = 7, height = 5)
+      print(plt)
+    }
+  }
+}
+```
+
+```{r p_val_filt_tsv, results="asis"}
+for (ct in celltypes) {
+  data <- so@misc$de$pval_filt[[ct]]
+  fname <- paste0(p_adj_filt_tsv_dir, cond_pairs_lbl, ".",
+                  strsanitize(ct), ".tsv")
+  if (!is.null(data)) {
+    if (nrow(data) > 0) {
+      # Add metadata columns
+      data$cmp <- cond_pairs_lbl
+      data$ct <- ct
+      data$gene <- rownames(data)
+
+      # Reorder columns to match desired output format
+      output <- data[, c("cmp", "ct", "gene", "pct.1", "pct.2", "p_val", "p_val_adj", "avg_log2FC")]
+
+      # Write the data to file
+      print(paste0("Writing file: ", fname))
+      fwrite(output, file = fname, sep = "\t", quote = FALSE)
+    }
+  }
+}
+tab <- sapply(so@misc$de$pval_filt, "nrow")
+print(knitr::kable(tab))
+```
+
+```{r unfiltered_tsv}
+for (ct in celltypes) {
+  data <- so@misc$de$all[[ct]]
+  fname <- paste0(unfiltered_tsv_dir, cond_pairs_lbl, ".",
+                  strsanitize(ct), ".tsv")
+  if (!is.null(data)) {
+    if (nrow(data) > 0) {
+      # Add metadata columns
+      data$cmp <- cond_pairs_lbl
+      data$ct <- ct
+      data$gene <- rownames(data)
+
+      # Reorder columns to match desired output format
+      output <- data[, c("cmp", "ct", "gene", "pct.1", "pct.2", "p_val", "p_val_adj", "avg_log2FC")]
+
+      # Write the data to file
+      print(paste0("Writing file: ", fname))
+      fwrite(output, file = fname, sep = "\t", quote = FALSE)
+    }
+  }
+}
+```
+
+# Session info
+
+```{r}
+sessionInfo()
+```
+
