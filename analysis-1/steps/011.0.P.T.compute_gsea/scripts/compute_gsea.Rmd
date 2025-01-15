@@ -1,0 +1,93 @@
+---
+title: "InDen T cells | Gene Sets Expression Analysis"
+author: "Giorgio Gonnella"
+date: 2024-04-29
+output:
+  html_document:
+    theme: sandstone
+params:
+  pfx: "/srv/baia/"
+  libpath: "/home/giorgio/R-pkg-Seurat5/"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message=F, warning=F, echo=T)
+.libPaths(c(params$libpath, .libPaths()))
+
+library(enrichplot)
+library(clusterProfiler)
+library(pathview)
+library(Organism.dplyr)
+library(fgsea)
+library(DOSE)
+
+prj_root <- paste0(params$pfx, "inden/")
+analysis_root <- paste0(prj_root, "analysis-1/")
+
+prev_step_dir <- paste0(analysis_root, "steps/010.0.P.T.compute_de/")
+input_var_dir <- paste0(prev_step_dir, "results/vars/")
+
+this_step_dir <- paste0(analysis_root, "steps/011.0.P.T.compute_gsea/")
+var_dir <- paste0(this_step_dir, "results/vars/")
+dir.create(var_dir, showWarnings = FALSE, recursive = TRUE)
+
+organism <- "org.Hs.eg.db"
+require(org.Hs.eg.db)
+keytypes(org.Hs.eg.db)
+```
+
+```{r load_input_data}
+so <- readRDS(file = paste0(input_var_dir, "so_w_deseq.rds"))
+```
+
+```{r prepare_results_slot}
+so@misc$gsea <- list()
+```
+
+```{r run_gsea_go}
+so@misc$gsea$go <- list()
+for (group in names(so@misc$de$all)) {
+  markers <- so@misc$de$all[[group]]
+  genes <- markers$avg_log2FC
+  names(genes) <- rownames(markers)
+  genes <- sort(genes, decreasing = TRUE)
+  so@misc$gsea$go_genelist <- genes
+  so@misc$gsea$go[[group]] <- gseGO(geneList = genes,
+               ont = "ALL",
+               keyType = "SYMBOL",
+               OrgDb = organism,
+               minGSSize = 3,
+               maxGSSize = 800,
+               pvalueCutoff = 0.05,
+               pAdjustMethod = "BH")
+}
+```
+
+```{r run_gsea_kegg}
+so@misc$gsea$kegg <- list()
+for (group in names(so@misc$de$all)) {
+  markers <- so@misc$de$all[[group]]
+  genes <- markers$avg_log2FC
+  names(genes) <- rownames(markers)
+  genes <- sort(genes, decreasing = TRUE)
+  names(genes) <- mapIds(org.Hs.eg.db, names(genes),
+                         column="ENTREZID", keytype="SYMBOL")
+  so@misc$gsea$kegg_genelist <- genes
+  so@misc$gsea$kegg[[group]] <- gseKEGG(geneList = genes,
+                 keyType = "ncbi-geneid",
+                 minGSSize = 3,
+                 maxGSSize = 800,
+                 pvalueCutoff = 0.05,
+                 pAdjustMethod = "BH")
+}
+```
+
+```{r save_results}
+saveRDS(so, paste0(var_dir, "so_w_gsea.rds"))
+```
+
+# Session info
+
+```{r}
+sessionInfo()
+```

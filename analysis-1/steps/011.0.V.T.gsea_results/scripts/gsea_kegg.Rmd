@@ -1,0 +1,125 @@
+---
+title: "InDen T cells | Gene Sets Expression Analysis Results | KEGG"
+author: "Giorgio Gonnella"
+date: 2024-04-29
+output:
+  html_document:
+    theme: sandstone
+params:
+  pfx: "/srv/baia/"
+  libpath: "/home/giorgio/R-pkg-Seurat5/"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message=F, warning=F, echo=T)
+.libPaths(c(params$libpath, .libPaths()))
+
+library(ggplot2)
+library(enrichplot)
+library(clusterProfiler)
+library(pathview)
+library(Organism.dplyr)
+library(fgsea)
+library(DOSE)
+
+prj_root <- paste0(params$pfx, "inden/")
+analysis_root <- paste0(prj_root, "analysis-1/")
+
+prev_step_dir <- paste0(analysis_root, "steps/011.0.P.T.compute_gsea/")
+input_var_dir <- paste0(prev_step_dir, "results/vars/")
+
+this_step_dir <- paste0(analysis_root, "steps/011.0.V.T.gsea_results/")
+results_dir <- paste0(this_step_dir, "results/")
+tables_dir <- paste0(results_dir, "tables/")
+dir.create(tables_dir, showWarnings = F, recursive = T)
+plots_dir <- paste0(results_dir, "plots/")
+for (subdir in c("barplots", "dotplots", "cnet_plots", "emap_plots",
+                "ridgeplots", "gsea_plots")) {
+  dir.create(paste0(plots_dir, subdir), showWarnings = F, recursive = T)
+}
+
+organism <- "org.Hs.eg.db"
+require(org.Hs.eg.db)
+keytypes(org.Hs.eg.db)
+
+helpers_dir = paste0(prj_root, "helpers/")
+source(paste0(helpers_dir, "de_helpers.R"))
+```
+
+```{r sanitize_group_name}
+# change anything which is not A-Z0-9_ to _
+sanitize_group_name <- function(group) {
+  gsub("[^A-Za-z0-9_]", "_", group)
+}
+```
+
+```{r load_input_data}
+so <- readRDS(file = paste0(input_var_dir, "so_w_gsea.rds"))
+```
+
+```{r}
+genes <- so@misc$gsea$kegg_genelist
+
+for (group in names(so@misc$gsea$kegg)) {
+  gse <- so@misc$gsea$kegg[[group]]
+  if (nrow(gse) == 0) {
+    print(paste0(group, ": No significant gene sets enrichment found"))
+  } else {
+
+    print(paste0(group, ": ", nrow(gse),
+                 " significant gene sets enrichment found"))
+
+    group <- sanitize_group_name(group)
+
+    gse_df <- as.data.frame(gse)
+    fname <- paste0(tables_dir, group, ".gsea.KEGG.tsv")
+    write.csv(gse_df, file = fname, row.names = FALSE)
+
+    plt <- gsea_barplot(gse) +
+           labs(title = "Top 20 Enriched KEGG Terms", x = "KEGG Term")
+    fname <- paste0(plots_dir, "barplots/", group, ".barplot.KEGG.pdf")
+    print(plt)
+    ggsave(fname, plot = plt, width = 10, height = 8)
+
+
+    pdf(paste0(plots_dir, "dotplots/", group, ".dotplot.KEGG.pdf"),
+        width = 10, height = 12)
+    plt <- dotplot(gse, showCategory = 10, split = ".sign") +
+           facet_grid(.~.sign)
+    print(plt)
+    dev.off()
+
+    pdf(paste0(plots_dir, "cnet_plots/", group, ".cnet_plot.KEGG.pdf"),
+        width = 10, height = 16)
+    plt <- cnetplot(gse, categorySize = "pvalue", foldChange = genes,
+                    showCategory = 3)
+    print(plt)
+    dev.off()
+
+    pdf(paste0(plots_dir, "emap_plots/", group, ".emap_plot.KEGG.pdf"),
+        width = 10, height = 8)
+    plt <- emapplot(pairwise_termsim(gse), showCategory = 10)
+    print(plt)
+    dev.off()
+
+    pdf(paste0(plots_dir, "ridgeplots/", group, ".ridgeplot.KEGG.pdf"),
+        width = 8, height = 18)
+    plt <- ridgeplot(gse) + labs(x = "enrichment distribution")
+    print(plt)
+    dev.off()
+
+    plt <- gseaplot(gse, by = "all", title = gse$Description[1], geneSetID = 1)
+    print(plt)
+    ggsave(plot = plt, file=paste0(plots_dir, "gsea_plots", group,
+                                   ".gsea_plot.KEGG.pdf"),
+           width=8, height=8)
+
+  }
+}
+```
+
+# Session info
+
+```{r}
+sessionInfo()
+```
