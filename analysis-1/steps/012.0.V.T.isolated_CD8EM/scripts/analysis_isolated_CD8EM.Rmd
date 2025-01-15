@@ -1,0 +1,168 @@
+---
+title: "InDen Project | T cells | Isolate Effector Memory CD8+ cells"
+author: "Giorgio Gonnella"
+date: 2024-05-21
+output:
+  html_document:
+    theme: sandstone
+params:
+  pfx: "/srv/baia/"
+  libpath: "/home/giorgio/R-pkg-Seurat5/"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message=F, warning=F, echo=T)
+.libPaths(c(params$libpath, .libPaths()))
+
+library(Seurat)
+#library(viridis)
+#library(ggplot2)
+#library(ggrepel)
+#library(ggExtra)
+#library(gplots)
+#library(RColorBrewer)
+#library(reshape2)
+#library(ggsci)
+#library(dplyr)
+#library(harmony)
+#library(clusterProfiler)
+library(scProportionTest)
+
+prj_root <- paste0(params$pfx, "inden/")
+analysis_root <- paste0(prj_root, "analysis-1/")
+
+input_step_dir <- paste0(analysis_root, "steps/012.0.P.T.isolate_CD8EM/")
+input_var_dir <- paste0(input_step_dir, "results/vars/")
+
+this_step_dir <- paste0(analysis_root, "steps/012.0.V.T.isolated_CD8EM/")
+plots_dir <- paste0(this_step_dir, "results/plots/")
+dir.create(plots_dir, showWarnings = FALSE, recursive = TRUE)
+tables_dir <- paste0(this_step_dir, "results/tables/")
+dir.create(tables_dir, showWarnings = FALSE, recursive = TRUE)
+
+helpers_dir = paste0(prj_root, "helpers/")
+source(paste0(helpers_dir, "de_helpers.R"))
+```
+
+```{r load_input_data}
+EM_cells <- readRDS(file = paste0(input_var_dir, "isolated_CD8EM_so.rds"))
+```
+
+# UMAP plot
+
+```{r umap_plot, fig.width=10, fig.height=6}
+plt <- DimPlot(object = EM_cells, reduction = "umapharm", pt.size = 0.3,
+        group.by = EM_cells@misc$sel_res_col, split.by="clinical_condition",
+        cols = EM_cells@misc$cluster_cols)
+fname <- paste0(plots_dir, "isolated_CD8EM.umap_plot_by_subcluster.svg")
+plt <- plt + labs(x = "UMAP Harmony 1", y = "UMAP Harmony 2")
+plt <- plt + ggtitle("Sub-clustering at resolution 0.4")
+ggsave(filename = fname, plot = plt, device = "svg", width=12, height=6)
+plt
+```
+
+# Phase
+
+```{r umap_plot_by_phase, fig.width=10, fig.height=6}
+plt <- DimPlot(object = EM_cells, reduction = "umapharm", pt.size = 0.3,
+        group.by = "Phase", split.by="clinical_condition",
+        cols = EM_cells@misc$phase_cols)
+fname <- paste0(plots_dir, "isolated_CD8EM.umap_plot_by_phase.svg")
+plt <- plt + labs(x = "UMAP Harmony 1", y = "UMAP Harmony 2")
+plt <- plt + ggtitle("Cell Cycle Phase")
+ggsave(filename = fname, plot = plt, device = "svg", width=12, height=6)
+plt
+```
+
+# Cell type
+
+```{r umap_plot_by_ct, fig.width=10, fig.height=6}
+plt <- DimPlot(object = EM_cells, reduction = "umapharm", pt.size = 0.3,
+        group.by = "pruned.labels_singleR_fine.mod",
+        split.by = "clinical_condition",
+        cols = EM_cells@misc$fctype_mod_cols) +
+  theme(legend.position = "bottom")
+fname <- paste0(plots_dir, "isolated_CD8EM.umap_plot_by_celltype.svg")
+plt <- plt + labs(x = "UMAP Harmony 1", y = "UMAP Harmony 2")
+ggsave(filename = fname, plot = plt, device = "svg", width=12, height=6)
+plt
+```
+
+# Sample
+
+```{r umap_plot_by_sample}
+DimPlot(object = EM_cells, reduction = "umapharm", pt.size = 0.3,
+        group.by = "sample", split.by="clinical_condition",
+        cols = EM_cells@misc$sample_cols)
+```
+
+# Feature plots
+
+```{r feature_plot_OASL}
+FeaturePlot(EM_cells, features = "OASL",reduction = "umapharm",
+            split.by="clinical_condition")
+```
+
+```{r feature_plot_HSPA8}
+FeaturePlot(EM_cells, features = "HSPA8",reduction = "umapharm",
+            split.by="clinical_condition")
+```
+
+```{r feature_plot_CCNB1}
+FeaturePlot(EM_cells, features = "CCNB1",reduction = "umapharm",
+            split.by="clinical_condition")
+```
+
+```{r feature_plot_MKI67}
+FeaturePlot(EM_cells, features = "MKI67",reduction = "umapharm",
+            split.by="clinical_condition")
+```
+
+# Cell types proportions
+
+```{r}
+prop_test <- EM_cells@misc$prop_test
+```
+
+```{r, fig.width=6, fig.height=3}
+plt <- permutation_plot(prop_test)
+fname <- paste0(plots_dir, "isolated_CD8EM.celltype_proportions.svg")
+ggsave(filename = fname, plot = plt, device = "svg", width=12, height=6)
+plt
+```
+
+# Differential expression analysis
+
+```{r show_de_analysis_results}
+de_results <- EM_cells@misc$em_de$pval_filt
+for (group in names(de_results)) {
+  if (nrow(de_results[[group]]) > 0) {
+    cat("Group: ", group, "\n")
+    print(de_results[[group]])
+  } else {
+    cat("No DE genes found for group ", group, "\n")
+  }
+  print("----------------------------------------------------")
+}
+```
+
+```{r feature_plot_MAP3K8, fig.width=10, fig.height=6}
+MAP3K8_expr <- FetchData(EM_cells, "rna_MAP3K8")
+MAP3K8_expr$rna_MAP3K8 <- cut(MAP3K8_expr$rna_MAP3K8, breaks = 10)
+EM_cells$MAP3K8 <- MAP3K8_expr
+cols <- colorRampPalette(c("gray", "darkblue"))(10)
+plt <-DimPlot(EM_cells, group.by = "MAP3K8", reduction = "umapharm",
+              split.by="clinical_condition", cols = cols)
+fname <- paste0(plots_dir, "isolated_CD8EM.feature_plot_MAP3K8.svg")
+plt <- plt + labs(x = "UMAP Harmony 1", y = "UMAP Harmony 2")
+plt <- plt + ggtitle("MAP3K8")
+plt <- plt + theme(legend.position = "none")
+ggsave(filename = fname, plot = plt, device = "svg", width=12, height=6)
+plt
+```
+
+# Session info
+
+```{r}
+sessionInfo()
+```

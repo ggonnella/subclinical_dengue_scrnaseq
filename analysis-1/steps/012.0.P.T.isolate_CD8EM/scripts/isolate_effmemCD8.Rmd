@@ -1,0 +1,136 @@
+---
+title: "InDen T cells | Isolate Effector Memory CD8+ cells"
+author: "Giorgio Gonnella"
+date: 2024-05-21
+output:
+  html_document:
+    theme: sandstone
+params:
+  pfx: "/srv/baia/"
+  libpath: "/home/giorgio/R-pkg-Seurat5/"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message=F, warning=F, echo=T)
+.libPaths(c(params$libpath, .libPaths()))
+
+library(Seurat)
+library(harmony)
+#library(viridis)
+#library(ggplot2)
+#library(ggrepel)
+#library(ggExtra)
+#library(gplots)
+#library(RColorBrewer)
+#library(reshape2)
+#library(ggsci)
+#library(dplyr)
+#library(clusterProfiler)
+library(scProportionTest)
+
+prj_root <- paste0(params$pfx, "inden/")
+analysis_root <- paste0(prj_root, "analysis-1/")
+
+prev_step_dir <- paste0(analysis_root, "steps/008.0.P.T.split_CD8EM/")
+input_var_dir <- paste0(prev_step_dir, "results/vars/")
+
+this_step_dir <- paste0(analysis_root, "steps/012.0.P.T.isolate_CD8EM/")
+var_dir <- paste0(this_step_dir, "results/vars/")
+dir.create(var_dir, showWarnings = F, recursive = T)
+
+helpers_dir = paste0(prj_root, "helpers/")
+source(paste0(helpers_dir, "de_helpers.R"))
+```
+
+```{r load_input_data}
+so <- readRDS(file = paste0(input_var_dir, "splitted_CD8EM_so.rds"))
+```
+
+# Isolate the EM CD8 cells
+
+```{r isolate_emcd8}
+Idents(so) <- so$pruned.labels_singleR_fine
+EM_cells <- subset(so, idents=c("Effector memory CD8 T cells"))
+```
+
+# Integration
+
+```{r integration}
+EM_cells <- RunHarmony(object = EM_cells, reduction.use = "pca",
+                       group.by.vars = "orig.ident")
+```
+
+# UMAP
+
+```{r umap}
+myDims <- 1:40
+EM_cells <- RunUMAP(object = EM_cells, dims = myDims,
+                    reduction = "harmony", reduction.name = "umapharm")
+```
+
+# Clustering
+
+```{r clustering}
+reS <- c(0.4)
+EM_cells <- FindNeighbors(EM_cells, dims = myDims, reduction = "harmony",
+                          graph.name = "harmsnn")
+EM_cells <- FindClusters(EM_cells, resolution = reS, graph.name = "harmsnn")
+
+EM_cells@misc$sel_res <- 0.4
+EM_cells@misc$sel_res_col <- paste0("harmsnn_res.", EM_cells@misc$sel_res)
+```
+
+# Cell type proportions test
+
+```{r ct_prop_test}
+prop_test <- sc_utils(EM_cells)
+EM_cells@misc$prop_test <- permutation_test(
+        prop_test, cluster_identity = EM_cells@misc$sel_res_col,
+        sample_1 = "Subclinical", sample_2 = "Hospitalized",
+        sample_identity = "clinical_condition"
+    )
+```
+
+# Differential expression analysis
+
+```{r}
+selgenes <- select_genes(so, 100)
+```
+
+```{r}
+em_pseudo <- AggregateExpression(EM_cells,
+                              assays = "RNA",
+                              return.seurat = TRUE,
+                              group.by = c("clinical_condition", "sample",
+                                           "harmsnn_res.0.4"))
+em_pseudo$ident.cond <- paste0(em_pseudo$harmsnn_res.0.4,
+                               "_", em_pseudo$clinical_condition)
+Idents(em_pseudo) <- "ident.cond"
+
+EM_cells@misc$em_de <- list()
+EM_cells@misc$em_de$all <- list()
+EM_cells@misc$em_de$pval_filt <- list()
+
+for (cl in unique(em_pseudo$harmsnn_res.0.4)) {
+    ident.1 <- paste0(cl, "_" , "Subclinical")
+    ident.2 <- paste0(cl, "_" , "Hospitalized")
+    all <- FindMarkers(em_pseudo, features = selgenes,
+                ident.1 = ident.1, ident.2 = ident.2, test.use = "DESeq2",
+                min.cells.group = 0)
+    EM_cells@misc$em_de$all[[cl]] <- all
+    pval_filt <- all[all$p_val_adj < 0.05, ]
+    pval_filt <- na.omit(pval_filt)
+    EM_cells@misc$em_de$pval_filt[[cl]] <- pval_filt
+}
+```
+
+## Saving data
+
+```{r, echo=TRUE}
+saveRDS(EM_cells, paste0(var_dir, "isolated_CD8EM_so.rds"))
+```
+# Session info
+
+```{r}
+sessionInfo()
+```
