@@ -23,11 +23,24 @@ prj_root <- paste0(params$pfx, "inden/")
 analysis_root <- paste0(prj_root, "analysis-1/")
 
 input_step_dir <- paste0(analysis_root, "steps/107.0.P.B.integration.harmony/")
-var_dir <- paste0(input_step_dir, "results/vars/")
+input_var_dir <- paste0(input_step_dir, "results/vars/")
+if (!dir.exists(input_var_dir)) {
+  stop("Input variable directory does not exist: ", input_var_dir)
+}
+
+this_step_dir <- paste0(analysis_root, "steps/107.0.V.B.integrated/")
+if (!dir.exists(this_step_dir)) {
+  stop("Current step directory does not exist: ", this_step_dir)
+}
+
+plots_outdir <- paste0(this_step_dir, "results/plots/")
+dir.create(plots_outdir, recursive = T, showWarnings = F)
+tables_outdir <- paste0(this_step_dir, "results/tables/")
+dir.create(tables_outdir, recursive = T, showWarnings = F)
 ```
 
 ```{r load, echo=F}
-so <- readRDS(file = paste0(var_dir, "integrated_so.rds"))
+so <- readRDS(file = paste0(input_var_dir, "integrated_so.rds"))
 ```
 
 ## UMAP
@@ -116,10 +129,12 @@ print(ggplot(cl_vs_sample, aes(x = SampleID, y = Freq, fill = Cluster))+
 SingleR fine cell type annotations
 
 ```{r umap_singleR_fine, fig.width=12, fig.height=6, echo=F}
-DimPlot(object = so, reduction = "umapharm",
+plt <- DimPlot(object = so, reduction = "umapharm",
         group.by = "pruned.labels_singleR_fine",
         cols = so@misc$fctype_cols, label = F, repel = TRUE) +
   ggtitle("UMAP plot, colored by cell type")
+fname <- paste0(plots_outdir, "umap.celltypes.svg")
+ggsave(filename = fname, plot = plt, device = "svg", width = 12, height = 6)
 ```
 
 ```{r umap_singleR_by_sample_fine, fig.width=12, fig.height=12, echo=F}
