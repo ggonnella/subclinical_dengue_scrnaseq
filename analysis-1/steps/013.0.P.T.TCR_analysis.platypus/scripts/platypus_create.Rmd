@@ -1,0 +1,106 @@
+---
+title: "InDen T cells | Platypus vgm object creation"
+author: "Giorgio Gonnella"
+date: "2024-10-14"
+output:
+  html_document:
+    theme: sandstone
+params:
+  pfx: "/srv/baia/"
+  libpath: "/home/giorgio/R-pkg-Seurat5/"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message=F, warning=F, echo=T)
+.libPaths(c(params$libpath, .libPaths()))
+
+library(Platypus)
+library(dplyr)
+
+prj_root <- paste0(params$pfx, "inden/")
+analysis_root <- paste0(prj_root, "analysis-1/")
+
+vdj_counts_pfx <- paste0(prj_root, "data/counts/")
+
+input_step_dir <- paste0(analysis_root, "steps/008.0.P.T.split_CD8EM/")
+input_var_dir <- paste0(input_step_dir, "results/vars/")
+if (!dir.exists(input_var_dir)) {
+  stop("Input variable directory does not exist: ", input_var_dir)
+}
+
+this_step_dir <- paste0(analysis_root, "steps/013.0.P.T.TCR_analysis.platypus/")
+if (!dir.exists(this_step_dir)) {
+  stop("Current step directory does not exist: ", this_step_dir)
+}
+
+var_dir <- paste0(this_step_dir, "results/vars/")
+dir.create(var_dir, showWarnings = FALSE, recursive = TRUE)
+
+plots_dir <- paste0(this_step_dir, "results/plots/")
+dir.create(plots_dir, showWarnings = FALSE, recursive = TRUE)
+
+helpers_dir <- paste0(prj_root, "helpers/")
+source(paste0(helpers_dir, "platypus_helpers.R"))
+```
+
+# Loading input files
+
+## VDJ data
+
+```{r input_files}
+VDJ_dirs <- list()
+for (i in c(1:3, 5:13)) {
+  s <- paste0("sample_", i, "_T")
+  VDJ_dirs[[i]] <- paste0(vdj_counts_pfx, s, "/per_sample_outs/", s, "/vdj_t")
+}
+VDJ_dirs <- VDJ_dirs[sapply(VDJ_dirs, function(x) !is.null(x))]
+names(VDJ_dirs) <- paste0("S", c(1:3, 5:13), "T")
+print(VDJ_dirs)
+```
+
+## Seurat Object
+
+```{r load_seurat_object}
+so <- readRDS(file = paste0(input_var_dir, "splitted_CD8EM_so.rds"))
+```
+
+Platypus requires that ``sample_id`` contains only s followed by a number.
+We will create a new column ``sample_id`` that contains the sample number,
+making sure that they are ordered as the levels of the ``sample`` column.
+
+```{r setup sample_id}
+lev_sample <- levels(so$sample)
+so@misc$sample_id_table <- data.frame(sample = lev_sample,
+                              sample_id = paste0("s", 1:length(lev_sample)))
+so$sample_id <-
+  so@misc$sample_id_table$sample_id[so$sample]
+so$sample_id <- factor(so$sample_id, levels=paste0("s", 1:length(lev_sample)))
+rm(lev_sample)
+```
+
+```{r setup_group_id}
+so$group_id <- so$clinical_condition
+```
+
+# Create VGM
+
+```{r create_vgm}
+vgm <- VDJ_GEX_matrix(VDJ.out.directory.list = VDJ_dirs,
+                      Seurat.in = so,
+                      parallel.processing = "mclapply",
+                      integrate.GEX.to.VDJ = F,
+                      integrate.VDJ.to.GEX = F)
+```
+
+## Save
+
+```{r save_results}
+saveRDS(vgm, paste0(var_dir, "vgm_raw.rds"))
+```
+
+## Session Info
+
+```{r session_info, echo=FALSE}
+sessionInfo()
+```
+

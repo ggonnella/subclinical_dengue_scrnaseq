@@ -1,0 +1,154 @@
+---
+title: "InDen T cells | Creation of HL vgm object and gene pairing computation"
+author: "Giorgio Gonnella"
+date: "2024-10-14"
+output:
+  html_document:
+    theme: sandstone
+params:
+  pfx: "/srv/baia/"
+  libpath: "/home/giorgio/R-pkg-Seurat5/"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message=F, warning=F, echo=T)
+.libPaths(c(params$libpath, .libPaths()))
+
+library(Platypus)
+library(dplyr)
+
+prj_root <- paste0(params$pfx, "inden/")
+analysis_root <- paste0(prj_root, "analysis-1/")
+
+input_step_dir <- paste0(analysis_root, "steps/013.0.P.T.TCR_analysis.platypus/")
+input_var_dir <- paste0(input_step_dir, "results/vars/")
+if (!dir.exists(input_var_dir)) {
+  stop("Input variable directory does not exist: ", input_var_dir)
+}
+
+this_step_dir <- paste0(analysis_root, "steps/013.0.P.T.TCR_analysis.platypus/")
+if (!dir.exists(this_step_dir)) {
+  stop("Current step directory does not exist: ", this_step_dir)
+}
+
+var_dir <- paste0(this_step_dir, "results/vars/")
+dir.create(var_dir, showWarnings = FALSE, recursive = TRUE)
+
+plots_dir <- paste0(this_step_dir, "results/plots/")
+dir.create(plots_dir, showWarnings = FALSE, recursive = TRUE)
+
+helpers_dir <- paste0(prj_root, "helpers/")
+source(paste0(helpers_dir, "platypus_helpers.R"))
+```
+
+# Load data
+
+```{r load_vgm}
+vgm_HL <- readRDS(file = paste0(input_var_dir, "vgm.rds"))
+```
+
+## Filter cells wo VJ
+
+We filter here the cells without VJ and save them as a separate object vgm\_HL.
+
+```{r filter_unavailable_vj}
+vgm_HL <- vgm_filter_unavailable_vj(vgm_HL)
+```
+
+```{r cmp_n_cells_after_filter_unavail_VJ}
+gex_data <- data.frame(sample = factor(vgm_HL[["GEX"]]$sample), library = "GEX",
+                       celltype = factor(vgm_HL[["GEX"]]$celltype.abbrev))
+vdj_data <- data.frame(sample = factor(vgm_HL[["VDJ"]]$sample), library = "VDJ",
+                       celltype = factor(vgm_HL[["VDJ"]]$celltype.abbrev))
+combined_data <- bind_rows(gex_data, vdj_data)
+combined_plot <- ggplot(combined_data,
+  aes(x = library, y = ..count.., fill=celltype)) +
+  geom_bar(stat = "count") +
+  facet_wrap(~sample,nrow=1)+
+  xlab("Sample") + ylab("N.cells") +
+  ggtitle("Number of cells") +
+  theme(legend.position = "bottom") +
+  scale_fill_manual(values = vgm_HL[["GEX"]]@misc$fctype_mod_cols)
+print(combined_plot)
+ggsave(paste0(plots_dir, "after_filter_unavail_VJ.n_cells_per_sample.pdf"),
+       combined_plot)
+```
+
+### Table GEX/VDJ available after filtering unavailable VJ chains
+
+```{r n_unavailable_after_filter_unavailable_vj}
+print("VDJ available for cells in GEX dataset:")
+table(vgm_HL[["GEX"]]$VDJ_available)
+
+print("VDJ available for cells in GEX dataset, by sample:")
+table(vgm_HL[["GEX"]]$sample, vgm_HL[["GEX"]]$VDJ_available)
+
+print("VDJ available for cells in GEX dataset, by celltype:")
+vgm_HL[["GEX"]]$celltype <- droplevels(vgm_HL[["GEX"]]$celltype)
+vgm_HL[["GEX"]]$celltype.abbrev <- droplevels(vgm_HL[["GEX"]]$celltype.abbrev)
+table(vgm_HL[["GEX"]]$celltype.abbrev, vgm_HL[["GEX"]]$VDJ_available)
+
+print("VDJ available for cells in GEX dataset, by cluster:")
+table(vgm_HL[["GEX"]]$seurat_clusters, vgm_HL[["GEX"]]$VDJ_available)
+```
+
+## Clonotypes
+
+Recompute for each cell the size of the clonotype to which it belongs.
+Group into bins for plotting.
+
+```{r clonotype_size_vgm_HL}
+vgm_HL <- cells_clonotype_size(vgm_HL)
+vgm_HL <- compute_clonotype_size_bins(vgm_HL)
+```
+
+## Gene usage analysis
+
+```{r gene_usage_analysis_all_data}
+all_data_results <- gene_usage_signif(vgm_HL$VDJ, genesets = c("VH_VL_pairing"))
+```
+
+```{r gene_usage_analysis_cell_types, message=T}
+cell_types <- unique(vgm_HL$VDJ$pruned.labels_singleR_fine.mod.abbrev)
+cell_type_results <- data.frame()
+for (ct in cell_types) {
+  message("Computing gene usage for cell type: ", ct)
+  results <-
+    gene_usage_signif(vgm_HL$VDJ, celltype = ct,
+                      celltype_column = "pruned.labels_singleR_fine.mod.abbrev",
+                      genesets = c("VH_VL_pairing"))
+  if (!is.null(results) && nrow(results) > 0) {
+    cell_type_results <- rbind(cell_type_results, results)
+  }
+}
+```
+
+```{r gene_usage_analysis_unsplitted}
+unsplitted_results <-
+  gene_usage_signif(vgm_HL$VDJ,
+                    celltype = "CD8+ TEMRA",
+                    celltype_column = "pruned.labels_singleR_fine.abbrev",
+                    genesets = c("VH_VL_pairing"))
+```
+
+```{r gene_usage_analysis_merge}
+vgm_HL$GEX@misc$gene_pairings$all <- rbind(all_data_results,
+                                           cell_type_results,
+                                           unsplitted_results)
+vgm_HL$GEX@misc$gene_pairings$p_filt <-
+  vgm_HL$GEX@misc$gene_pairings$all[
+    vgm_HL$GEX@misc$gene_pairings$all$p_adj < 0.05,]
+```
+
+## Save
+
+```{r saving_vgm_HL}
+saveRDS(vgm_HL, paste0(var_dir, "vgm_HL.rds"))
+```
+
+## Session Info
+
+```{r session_info, echo=FALSE}
+sessionInfo()
+```
+
