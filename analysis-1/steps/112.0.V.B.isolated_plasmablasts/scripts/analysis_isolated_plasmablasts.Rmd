@@ -1,0 +1,148 @@
+---
+title: "InDen B cells | Analysis of isolated Plasmablasts"
+author: "Giorgio Gonnella"
+date: 2024-08-16
+output:
+  html_document:
+    theme: sandstone
+params:
+  pfx: "/srv/baia/"
+  libpath: "/home/giorgio/R-pkg-Seurat5/"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message=F, warning=F, echo=T)
+.libPaths(c(params$libpath, .libPaths()))
+
+library(Seurat)
+library(scProportionTest)
+
+prj_root <- paste0(params$pfx, "inden/")
+analysis_root <- paste0(prj_root, "analysis-1/")
+
+input_step_dir <- paste0(analysis_root, "steps/112.0.P.B.isolate_plasmablasts/")
+input_var_dir <- paste0(input_step_dir, "results/vars/")
+if (!dir.exists(input_var_dir)) {
+  stop("Input variable directory does not exist: ", input_var_dir)
+}
+
+this_step_dir <- paste0(analysis_root, "steps/112.0.V.B.isolated_plasmablasts/")
+if (!dir.exists(this_step_dir)) {
+  stop("Current step directory does not exist: ", this_step_dir)
+}
+
+plots_dir <- paste0(this_step_dir, "results/plots/")
+dir.create(plots_dir, recursive = TRUE)
+tables_dir <- paste0(this_step_dir, "results/tables/")
+dir.create(tables_dir, recursive = TRUE)
+
+helpers_dir = paste0(prj_root, "helpers/")
+source(paste0(helpers_dir, "de_helpers.R"))
+```
+
+```{r load_data, include = FALSE}
+so <- readRDS(file = paste0(input_var_dir, "isolated_blasmablasts.rds"))
+```
+
+# UMAP plot
+
+```{r umap_plot, fig.width=10, fig.height=6}
+plt <- DimPlot(object = so, reduction = "umapharm", pt.size = 0.3,
+        group.by = so@misc$sel_res_col, split.by="clinical_condition",
+        cols = so@misc$cluster_cols)
+fname <- paste0(plots_dir, "PB.umap_plot_by_subcluster.svg")
+ggsave(filename = fname, plot = plt, device = "svg")
+plt
+```
+
+# Phase
+
+```{r umap_plot_by_phase}
+plt <- DimPlot(object = so, reduction = "umapharm", pt.size = 0.3,
+        group.by = "Phase", split.by="clinical_condition",
+        cols = so@misc$phase_cols)
+fname <- paste0(plots_dir, "PB.umap_plot_by_phase.svg")
+ggsave(filename = fname, plot = plt, device = "svg", width=12, height=6)
+plt
+```
+
+# Cell type
+
+```{r umap_plot_by_ct, fig.width=10, fig.height=6}
+plt <- DimPlot(object = so, reduction = "umapharm", pt.size = 0.3,
+        group.by = "pruned.labels_singleR_fine.mod",
+        split.by = "clinical_condition",
+        cols = so@misc$fctype_mod_cols) +
+  theme(legend.position = "bottom")
+fname <- paste0(plots_dir, "PB.umap_plot_by_celltype.svg")
+ggsave(filename = fname, plot = plt, device = "svg")
+plt
+```
+
+# Sample
+
+```{r umap_plot_by_sample}
+DimPlot(object = so, reduction = "umapharm", pt.size = 0.3,
+        group.by = "sample", split.by="clinical_condition",
+        cols = so@misc$sample_cols)
+```
+
+# Feature plots
+
+```{r feature_plot_OASL}
+FeaturePlot(so, features = "OASL",reduction = "umapharm",
+            split.by="clinical_condition")
+```
+
+```{r feature_plot_HSPA8}
+FeaturePlot(so, features = "HSPA8",reduction = "umapharm",
+            split.by="clinical_condition")
+```
+
+```{r feature_plot_CCNB1}
+FeaturePlot(so, features = "CCNB1",reduction = "umapharm",
+            split.by="clinical_condition")
+```
+
+```{r feature_plot_MKI67}
+FeaturePlot(so, features = "MKI67",reduction = "umapharm",
+            split.by="clinical_condition")
+```
+
+# Cell types proportions
+
+```{r, fig.width=6, fig.height=3}
+plt <- permutation_plot(so@misc$prop_test)
+fname <- paste0(plots_dir, "PB.celltype_proportions.svg")
+ggsave(filename = fname, plot = plt, device = "svg")
+plt
+```
+
+# Differential expression analysis
+
+```{r show_de_analysis_results}
+de_results <- so@misc$em_de$pval_filt
+for (group in names(de_results)) {
+  if (nrow(de_results[[group]]) > 0) {
+    cat("Group: ", group, "\n")
+    print(de_results[[group]])
+  } else {
+    cat("No DE genes found for group ", group, "\n")
+  }
+  print("----------------------------------------------------")
+}
+```
+
+```{r feature_plot_IFI27, fig.width=10, fig.height=6}
+plt <- FeaturePlot(so, features = "IFI27",reduction = "umapharm",
+            split.by="clinical_condition")
+fname <- paste0(plots_dir, "PB.feature_plot_IFI27.svg")
+ggsave(filename = fname, plot = plt, device = "svg")
+plt
+```
+
+# Session info
+
+```{r}
+sessionInfo()
+```
