@@ -1,0 +1,250 @@
+---
+title: "InDen B cells | Clustering resolutions comparison"
+author: "Giorgio Gonnella"
+date: 2024-06-27
+output:
+  html_document:
+    theme: sandstone
+params:
+  pfx: "/srv/baia/"
+  libpath: "/home/giorgio/R-pkg-Seurat5/"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message=F, warning=F, echo=F)
+.libPaths(c(params$libpath, .libPaths()))
+
+library(Seurat)
+library(viridis)
+library(ggplot2)
+library(RColorBrewer)
+library(dplyr)
+library(mclust)
+library(clustree)
+library(qualpalr)
+
+prj_root <- paste0(params$pfx, "inden/")
+analysis_root <- paste0(prj_root, "analysis-1/")
+
+input_step_dir <- paste0(analysis_root, "steps/107.0.P.B.integration.harmony/")
+var_dir <- paste0(input_step_dir, "results/vars/")
+```
+
+```{r load, echo=F}
+so <- readRDS(file = paste0(var_dir, "integrated_so.rds"))
+```
+
+```{r clusters_palette}
+cl_cols = unique(c(qualpal(99, colorspace="pretty")$hex,
+            qualpal(99, colorspace="rainbow")$hex))
+```
+
+```{r resolution_lists, echo=F}
+resolutions = grep("^harmsnn_res", colnames(so@meta.data),
+                   value = TRUE)
+# limit resolutions to consider for some of the plots
+max_n_clusters = 60
+n_clusters <- data.frame(Resolution = numeric(), N_Clusters = numeric(),
+                         stringsAsFactors = FALSE)
+for(g.b in resolutions){
+  res <- gsub("harmsnn_res.", "", g.b)
+  res_n_clusters = nrow(unique(so@meta.data[g.b]))
+  n_clusters <- rbind(n_clusters,
+        data.frame(Resolution = res,
+                   N_Clusters = res_n_clusters))
+}
+res_l <- n_clusters$Resolution[n_clusters$N_Clusters <= max_n_clusters]
+```
+
+# Comparison of clustering at different resolutions
+
+## Number of clusters
+
+```{r table_n_clusters}
+knitr::kable(n_clusters)
+```
+
+## Plots
+
+```{r umap_clustering, fig.align="center", fig.width=12, fig.height=6, echo=F}
+for (g.b in resolutions) {
+  res <- gsub("harmsnn_res.", "", g.b)
+  print(DimPlot(object = so, reduction = "umapharm",
+          group.by = g.b, label = TRUE, cols = cl_cols))
+  print(VlnPlot(object = so, features = c("nCount_RNA",
+         "nFeature_RNA", "percent.mito"), group.by = g.b, cols = cl_cols))
+  sample_vs_cl <- as.data.frame(
+    round(prop.table(table(so@meta.data[[g.b]],
+                           so$sample), margin = 1)*100,
+          digits = 2)
+  )
+  colnames(sample_vs_cl)[1:2] <- c("Seurat_Cl", "Sampleid")
+  levels(sample_vs_cl$Seurat_Cl) <-
+    paste("Cl", levels(sample_vs_cl$Seurat_Cl), sep = "_")
+  print(ggplot(sample_vs_cl, aes(x = Seurat_Cl, y = Freq, fill = Sampleid))+
+    geom_bar(stat = "identity", alpha = .98)+
+    coord_flip()+ theme_minimal()+
+    scale_fill_manual(values = so@misc$sample_cols))
+  # horizontal line to separate resolutions better in report
+  print(ggplot() + geom_hline(yintercept = 0.5) + theme_void())
+}
+```
+
+### Clustering tree
+
+```{r clustree, fig.align="center", fig.width=12, fig.height=6, echo=F}
+clustree(so, prefix = "harmsnn_res.")
+```
+
+## Cell types by cluster
+
+### Adjusted Rand Index
+
+We used the Adjusted Rand Index, computed using the mclust library, to
+compare two partitions, in this case the single R assignments and the
+unsupervised clustering. The value is zero for two random partitions and
+one for perfect agreement betweeen the partitions.
+
+```{r adj_rand_idx, echo=F}
+ari <- data.frame(Resolution = numeric(), ARI_Value_fine = numeric(),
+                  ARI_Value_main = numeric(), stringsAsFactors = FALSE)
+for (g.b in resolutions) {
+  ari_value_f <- adjustedRandIndex(so$pruned.labels_singleR_fine,
+                                  so@meta.data[[g.b]])
+  ari_value_m <- adjustedRandIndex(so$pruned.labels_singleR_main,
+                                  so@meta.data[[g.b]])
+  res <- gsub("harmsnn_res.", "", g.b)
+  ari <- rbind(ari, data.frame(Resolution = res, ARI_Value_fine = ari_value_f,
+                               ARI_Value_main = ari_value_m))
+}
+knitr::kable(ari)
+```
+
+### Weighted average cluster purity
+
+We computed the cluster purity of each cluster as number of cells in the
+most frequent cell type assignment divided by the total number of cells
+of the cluster. We then computed an average of the cluster purity values
+for all cluster, weighted by the cluster size. Additionally we compute
+the percentage of clusters with a purity of at least 95%, 80%, 65% and
+50% respectively.
+
+```{r cluster_purity, echo=F}
+purity <- data.frame(Resolution = numeric(),
+                     Purity = numeric(),
+                     perc_Clusters_Purity50 = numeric(),
+                     perc_Clusters_Purity65 = numeric(),
+                     perc_Clusters_Purity80 = numeric(),
+                     perc_Clusters_Purity95 = numeric(),
+                     stringsAsFactors = FALSE)
+
+for (g.b in resolutions) {
+  cluster_cell_types <- data.frame(
+    Cluster = so@meta.data[[g.b]],
+    Cell_Type_f = so$pruned.labels_singleR_fine
+  )
+
+  cluster_purity_details <- cluster_cell_types %>%
+    group_by(Cluster) %>%
+    count(Cell_Type_f) %>%
+    mutate(TotalCells = sum(n)) %>%
+    arrange(desc(n)) %>%
+    slice(1) %>%
+    ungroup() %>%
+    mutate(Purity = n / TotalCells)
+
+  weighted_average_purity <- sum(cluster_purity_details$Purity *
+                      cluster_purity_details$TotalCells) /
+                      sum(cluster_purity_details$TotalCells)
+
+  n_clusters_purity50 <- sum(cluster_purity_details$Purity >= 0.50)
+  n_clusters_purity65 <- sum(cluster_purity_details$Purity >= 0.65)
+  n_clusters_purity80 <- sum(cluster_purity_details$Purity >= 0.80)
+  n_clusters_purity95 <- sum(cluster_purity_details$Purity >= 0.95)
+
+  perc_Clusters_Purity50 <- n_clusters_purity50 / nrow(cluster_purity_details) * 100
+  perc_Clusters_Purity65 <- n_clusters_purity65 / nrow(cluster_purity_details) * 100
+  perc_Clusters_Purity80 <- n_clusters_purity80 / nrow(cluster_purity_details) * 100
+  perc_Clusters_Purity95 <- n_clusters_purity95 / nrow(cluster_purity_details) * 100
+
+  res <- gsub("harmsnn_res.", "", g.b)
+  purity <- rbind(purity, data.frame(Resolution = res,
+                                     Purity_f = weighted_average_purity,
+                                     perc_Clusters_Purity50 = perc_Clusters_Purity50,
+                                     perc_Clusters_Purity65 = perc_Clusters_Purity65,
+                                     perc_Clusters_Purity80 = perc_Clusters_Purity80,
+                                     perc_Clusters_Purity95 = perc_Clusters_Purity95
+                                     ))
+}
+knitr::kable(purity)
+```
+
+## Cell proportions by cluster
+
+### Tables
+
+```{r singleR_vs_clust_tab, fig.width=12, fig.height=6, results="asis", echo=F}
+for (g.b in resolutions) {
+  res = gsub("harmsnn_res.", "", g.b)
+  cat("### Resolution : ", res, "\n")
+  print(knitr::kable(as.data.frame.matrix(table(so@meta.data[[g.b]], so$pruned.labels_singleR_fine))))
+  print(knitr::kable(as.data.frame.matrix(addmargins(round(prop.table(table(so@meta.data[[g.b]], so$pruned.labels_singleR_fine), margin = 1)*100, digits = 2), margin = 2))))
+  print(knitr::kable(as.data.frame.matrix(addmargins(round(prop.table(table(so$pruned.labels_singleR_fine, so@meta.data[[g.b]]), margin = 1)*100, digits = 2), margin = 2))))
+}
+```
+
+### Plots
+
+SingleR assignments by cluster at different clustering resolutions (same data as above visualized as barplots).
+
+```{r singleR_vs_clustering_plots, fig.width=12, fig.height=6, echo=F}
+for (g.b in resolutions) {
+  res = gsub("harmsnn_res.", "", g.b)
+  cat("Resolution : ", res, "\n")
+  df <- as.data.frame(round(prop.table(table(so@meta.data[[g.b]], so$pruned.labels_singleR_fine), margin = 2)*100, digits = 2))
+  colnames(df) <- c("cluster", "cell_type", "percentage")
+  print(ggplot(df, aes(x = cell_type, y = percentage))+
+  geom_bar(stat = "identity", aes(fill = cluster))+
+  theme_bw()+
+  coord_flip()+
+  scale_x_discrete(limits = rev(levels(df$cell_type))))
+  df2 <- as.data.frame(round(prop.table(table(so$pruned.labels_singleR_fine, so@meta.data[[g.b]]), margin = 2)*100, digits = 2))
+  colnames(df2) <- c("cell_type", "cluster", "percentage")
+  print(ggplot(df2, aes(x = cluster, y = percentage))+
+    geom_bar(stat = "identity", aes(fill = cell_type))+
+    theme_bw()+
+    coord_flip()+
+    scale_x_discrete(limits = rev(levels(df2$cluster))))
+}
+```
+
+#### Cell phase
+
+Plots comparing cell type assignments divided by cell phase assignment with the unsupervised clustering
+
+```{r singleR_and_phase_vs_clustering_plots, fig.width=12, fig.height=12, echo=F}
+for (g.b in resolutions) {
+  res = gsub("harmsnn_res.", "", g.b)
+  cat("Resolution : ", res, "\n")
+  df <- as.data.frame(round(prop.table(table(so@meta.data[[g.b]], interaction(so$Phase, so$pruned.labels_singleR_fine)), margin = 2)*100, digits = 2))
+colnames(df) <- c("cluster", "phase_cell_type", "percentage")
+print(ggplot(df, aes(x = phase_cell_type, y = percentage))+
+  geom_bar(stat = "identity", aes(fill = cluster))+
+  theme_bw()+
+  coord_flip()+
+  scale_x_discrete(limits = rev(levels(df$phase_cell_type))))
+  df2 <- as.data.frame(round(prop.table(table(interaction(so$Phase, so$pruned.labels_singleR_fine), so@meta.data[[g.b]]), margin = 2)*100, digits = 2))
+colnames(df2) <- c("phase_cell_type", "cluster", "percentage")
+print(ggplot(df2, aes(x = cluster, y = percentage))+
+  geom_bar(stat = "identity", aes(fill = phase_cell_type))+
+  theme_bw()+
+  coord_flip()+
+  scale_x_discrete(limits = rev(levels(df2$cluster))))
+}
+```
+
+## Session info
+
+```{r, echo=F}
+sessionInfo()
+```

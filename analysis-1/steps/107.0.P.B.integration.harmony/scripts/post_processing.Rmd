@@ -1,66 +1,66 @@
 ---
-title: "InDen Project | B cells | Post-processing after Harmony integration"
+title: "InDen B cells | Post-processing after Harmony integration"
 author: "Giorgio Gonnella"
 date: 2024-06-27
 output:
   html_document:
-    clean: FALSE
     theme: sandstone
 params:
   pfx: "/srv/baia/"
+  libpath: "/home/giorgio/R-pkg-Seurat5/"
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(message = FALSE, warning = FALSE, comment = FALSE, echo = TRUE)
-
+knitr::opts_chunk$set(message=F, warning=F, echo=F)
+.libPaths(c(params$libpath, .libPaths()))
 
 library(Seurat)
-library(viridis)
-library(ggplot2)
-library(ggrepel)
-library(ggExtra)
-library(gplots)
 library(RColorBrewer)
-library(reshape2)
-library(ggsci)
-library(dplyr)
-library(harmony)
-library(mclust)
+library(scProportionTest)
 
 prj_root <- paste0(params$pfx, "inden/")
 analysis_root <- paste0(prj_root, "analysis-1/")
 
 this_step_dir <- paste0(analysis_root, "steps/107.0.P.B.integration.harmony/")
-var_dir <- paste0(this_step_dir, "results/vars/")
+if (!dir.exists(this_step_dir)) {
+  stop("Current step directory does not exist: ", this_step_dir)
+}
 
+var_dir <- paste0(this_step_dir, "results/vars/")
 ```
 
 ```{r load, echo=F}
 so <- readRDS(file = paste0(var_dir, "integrated_so.raw.rds"))
-
 ```
 
 # Sample IDs
 
 ```{r create_sample_column, echo=T}
-so$sample <- sub("TC_SC03_(S\\d+B)_so", "\\1",
-                                so$orig.ident)
-levels_sample <- sub("TC_SC03_(S\\d+B)_so", "\\1",
-                     levels(so$orig.ident))
-so$sample <-
-  factor(so$sample, levels=levels_sample)
+so$sample <- sub("TC_SC03_(S\\d+B)_so", "\\1", so$orig.ident)
+levels_sample <- sub("TC_SC03_(S\\d+B)_so", "\\1", levels(so$orig.ident))
+so$sample <- factor(so$sample, levels=levels_sample)
+```
+
+# Sample Name
+
+```{r create_sample_name_column, echo=T}
+sample_to_sample_name = c("S1B" = "H1",
+                          "S5B" = "H4",
+                          "S6B" = "H5",
+                          "S7B" = "H6",
+                          "S8B" = "S1",
+                          "S9B" = "S2",
+                          "S11B" = "S4",
+                          "S12B" = "S5",
+                          "S13B" = "S6",
+                          "S15B" = "H7",
+                          "S16B" = "H8")
+so$sample_name <- factor(unname(sample_to_sample_name[so$sample]),
+                         levels = c("S1", "S2", "S4", "S5", "S6",
+                                    "H1", "H4", "H5", "H6", "H7", "H8"))
 ```
 
 # Cell types
-
-## Remove unchar cells
-
-There are none, so this is disabled.
-
-```{r remove_unchar, echo=TRUE}
-#so <- subset(so,
-#                            pruned.labels_singleR_fine != "unchar")
-```
 
 ## Sorting order
 
@@ -92,7 +92,7 @@ so$pruned.labels_singleR_fine.abbrev <-
 # Clinical condition
 
 ```{r create_clinical_condition_column, echo=TRUE}
-conditions <- c("Inapparent", "Hospitalized")
+conditions <- c("Subclinical", "Hospitalized")
 hosp_n = c("1", "5", "6", "7", "15", "16")
 so$clinical_condition <-
   ifelse(so$orig.ident %in% paste0("TC_SC03_S", hosp_n, "B_so"),
@@ -102,15 +102,35 @@ so$clinical_condition <-
     factor(so$clinical_condition, levels = conditions)
 ```
 
+```{r create_clinical_condition_abbrev, echo=TRUE}
+so$clinical_condition.abbrev <- factor(
+  substr(as.character(so$clinical_condition), 1, 1),
+  levels = substr(levels(so$clinical_condition), 1, 1)
+)
+```
+
 # Select clustering resolution
 
 ```{r selected_resolution, echo=TRUE}
 so@misc$sel_res <- "0.4"
-so@misc$sel_res_col <- paste0("harmsnn_res.",
-                                             so@misc$sel_res)
+so@misc$sel_res_col <- paste0("harmsnn_res.", so@misc$sel_res)
 ```
 
 # Color schemes
+
+Define color schemes for the main cell type labels, fine cell type labels,
+clinical conditions, samples, clusters and cell cycle phases, in order to have
+consistent colors across all plots.
+
+The colors are saved in some columns of the `so@misc` slot:
+- `mctype_cols` for the main cell type labels
+- `fctype_cols` for the fine cell type labels
+- `cond_cols` for the clinical conditions
+- `sample_cols` for the samples
+- `sample_name_cols` for the sample names
+- `cluster_cols` for the clusters
+- `phase_cols` for the cell cycle phases
+
 
 ```{r color_scheme_for_main_labels}
 so@misc$mctype_cols <-
@@ -122,17 +142,17 @@ names(so@misc$mctype_cols) <-
 
 ```{r color_scheme_for_fine_labels}
 so@misc$fctype_cols <- c(
-  "Naive B cells" = "#1f78b4",         # dark blue
+  "Naive B cells" = "#1f78b4",  # dark blue
   "Plasmablasts" = "#238b45",  # darker green
   "Non-switched memory B cells" = "#8c564b", # brown
   "Switched memory B cells" = "#ffa500", # orange
-  "Exhausted B cells" = "#9e9ac8"  # light purple
+  "Exhausted B cells" = "#9e9ac8" # light purple
 )
 ```
 
 ```{r color_scheme_for_conditions}
 so@misc$cond_cols <- c(
-  "Inapparent" = "darkgreen",
+  "Subclinical" = "darkblue",
   "Hospitalized" = "darkred"
 )
 ```
@@ -141,8 +161,10 @@ so@misc$cond_cols <- c(
 so@misc$sample_cols <-
   colorRampPalette(brewer.pal(8, name = "Accent"))(
                   length(unique(so$sample)))
-names(so@misc$sample_cols) <-
-  levels(so$sample)
+names(so@misc$sample_cols) <- levels(so$sample)
+
+so@misc$sample_name_cols <- so@misc$sample_cols
+names(so@misc$sample_name_cols) <- levels(so$sample_name)
 ```
 
 ```{r color_scheme_for_clusters}
@@ -157,6 +179,18 @@ names(so@misc$cluster_cols) <-
 ```{r color_scheme_for_phases}
 so@misc$phase_cols <- c("#00AFBB", "#E7B800", "#FC4E07")
 names(so@misc$phase_cols) <- c("G1", "G2M", "S")
+```
+
+# Cell proportions permutations test
+
+Perform a permutation test to assess the differences in cell type proportions.
+
+```{r cell_proportions_permutation_test, echo=TRUE}
+so@misc$proptest <- permutation_test(sc_utils(so),
+                       cluster_identity = "pruned.labels_singleR_fine.abbrev",
+                       sample_1 = "Subclinical", sample_2 = "Hospitalized",
+                       sample_identity = "clinical_condition",
+                       n_permutations = 1000)
 ```
 
 ## Saving data

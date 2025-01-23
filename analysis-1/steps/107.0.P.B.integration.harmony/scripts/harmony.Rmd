@@ -1,5 +1,5 @@
 ---
-title: "InDen Project | B cells | Harmony Integration"
+title: "InDen B cells | Integration using Harmony method"
 author: "Giorgio Gonnella"
 date: 2024-06-27
 output:
@@ -7,46 +7,39 @@ output:
     theme: sandstone
 params:
   pfx: "/srv/baia/"
+  libpath: "/home/giorgio/R-pkg-Seurat5/"
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(message = FALSE, warning = FALSE, comment = FALSE, echo = TRUE)
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(message=F, warning=F, echo=F)
+.libPaths(c(params$libpath, .libPaths()))
 
-# required libraries
-library(Seurat)
-library(viridis)
-library(ggplot2)
-library(ggrepel)
-library(ggExtra)
-library(gplots)
-library(RColorBrewer)
-library(reshape2)
-library(ggsci)
-library(dplyr)
 library(harmony)
+library(Seurat)
 
 prj_root <- paste0(params$pfx, "inden/")
 analysis_root <- paste0(prj_root, "analysis-1/")
 
 prev_step_dir <- paste0(analysis_root, "steps/106.0.P.B.merging.seurat/")
 input_var_dir <- paste0(prev_step_dir, "results/vars/")
+if (!dir.exists(input_var_dir)) {
+  stop("Input variable directory does not exist: ", input_var_dir)
+}
 
 this_step_dir <- paste0(analysis_root, "steps/107.0.P.B.integration.harmony/")
+if (!dir.exists(this_step_dir)) {
+  stop("Current step directory does not exist: ", this_step_dir)
+}
+
 var_dir <- paste0(this_step_dir, "results/vars/")
-dir.create(var_dir, recursive = TRUE)
+dir.create(var_dir, showWarnings = FALSE, recursive = TRUE)
 
 helpers_dir <- paste0(prj_root, "helpers/")
-
-#SC_gal_tools_dir <- paste0(this_step_dir, "scripts/smella_scripts/")
-
-SEED=154
-source(paste0(helpers_dir,"factor_resolution.R"))
+source(paste0(helpers_dir, "factor_resolution.R"))
 ```
 
-```{r load file, include = FALSE}
-# importing already processed merged object
-so <- readRDS(file = paste0(input_var_dir, "merged_so.rds"))
-
+```{r load_file, echo = FALSE}
+so <- readRDS(paste0(input_var_dir, "merged_so.rds"))
 ```
 
 In the integration step, the Harmony algorithm is used to integrate the data
@@ -57,8 +50,8 @@ After the integration, the data is clustered and visualized using UMAP.
 
 # Running Harmony
 
-```{r, echo=TRUE}
-set.seed(SEED)
+```{r run_harmony, echo = TRUE}
+set.seed(154)
 so <- RunHarmony(object = so,
                  group.by.vars=c("orig.ident"),
                  reduction = "pca", reduction.save="harmony")
@@ -73,14 +66,9 @@ myDims <- 1:40
 ```
 
 ```{r umap , message=FALSE, warning=FALSE}
-set.seed(SEED)
-tryCatch({
+set.seed(154)
 so <- RunUMAP(object = so, dims = myDims,
               reduction = "harmony", reduction.name = "umapharm")
-}, error = function(e) {
-message ("Load file error", e$message)
-})
-
 ```
 
 ## Clustering
@@ -90,7 +78,7 @@ reS <- c(0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8)
 ```
 
 ```{r clustering, message=FALSE, warning=FALSE, echo=TRUE}
-set.seed(SEED)
+set.seed(154)
 so <- FindNeighbors(object = so, dims = myDims,
                         reduction = "harmony", graph.name = "harmsnn")
 so <- FindClusters(object = so, resolution = reS,

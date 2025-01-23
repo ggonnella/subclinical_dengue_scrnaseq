@@ -1,0 +1,172 @@
+---
+title: "InDen B cells | Compare SingleR assignments with different references"
+author: "Giorgio Gonnella"
+date: 2024-07-17
+output:
+  html_document:
+    theme: sandstone
+params:
+  pfx: "/srv/baia/"
+  libpath: "/home/giorgio/R-pkg-Seurat5/"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message=F, warning=F, echo=F)
+.libPaths(c(params$libpath, .libPaths()))
+
+library(Seurat)
+library(ggplot2)
+library(celldex)
+library(SingleR)
+
+prj_root <- paste0(params$pfx, "inden/")
+analysis_root <- paste0(prj_root, "analysis-1/")
+
+input_step_dir <- paste0(analysis_root, "steps/107.0.P.B.integration.harmony/")
+var_dir <- paste0(input_step_dir, "results/vars/")
+```
+
+```{r load, echo=F}
+so <- readRDS(paste0(var_dir, "integrated_so.rds"))
+```
+
+```{r colors}
+divergent_colors <- c(
+  "#e6194b", "#3cb44b", "#ffe119", "#4363d8", "#f58231", "#911eb4", "#46f0f0",
+  "#f032e6", "#bcf60c", "#fabebe", "#008080", "#e6beff", "#9a6324", "#fffac8",
+  "#800000", "#aaffc3", "#808000", "#ffd8b1", "#000075", "#808080", "#ffffff",
+  "#000000", "#a9a9a9", "#ff6347", "#4682b4", "#daa520", "#ff1493", "#7fffd4",
+  "#dc143c", "#00ced1", "#7b68ee", "#ff4500"
+)
+```
+
+```{r def_prepare_sce}
+prepare_sce <- function(so) {
+  sce <- SingleCellExperiment::SingleCellExperiment(
+    assays=list(counts=so@assays$RNA@counts))
+  sce <- scater::logNormCounts(sce)
+  return <- sce
+}
+sce <- prepare_sce(so)
+```
+
+```{r def_assign_fine_labels}
+assign_fine_labels <- function(sce, ref) {
+  pred <- SingleR::SingleR(test=sce, ref=ref, labels=ref$label.fine,
+                           assay.type.test="logcounts")
+  pred$pruned.labels[is.na(pred$pruned.labels)] <- "Uncharacterized"
+  return <- pred$pruned.labels
+}
+```
+
+```{r def_umap_plot, echo=FALSE}
+umap_plot <- function(so, column, title) {
+  plt <- DimPlot(object = so, reduction = "umapharm",
+        group.by = column, label = F, repel = TRUE,
+        split.by = "clinical_condition")
+  plt <- plt + ggtitle(paste0("SingleR Fine Lbl -- Ref: ", title))
+  plt <- plt + labs(x = "UMAP Harmony 1", y = "UMAP Harmony 2")
+  plt <- plt + scale_color_manual(values = divergent_colors)
+  return(plt)
+}
+```
+
+## Monaco reference
+
+```{r monaco_table, echo=FALSE}
+table(so$pruned.labels_singleR_fine)
+```
+
+```{r monaco_umap, fig.width=12, fig.height=6, echo=F}
+plt <- umap_plot(so, "pruned.labels_singleR_fine", "Monaco")
+plt <- plt + scale_color_manual(values = so@misc$fctype_cols)
+plt
+```
+
+## Database of Immune Cell Expression/eQTLs/Epigenomics
+
+Disabled, since failed to download resource
+
+```{r assign_dice, echo=FALSE, eval=F}
+so$fine_lbl.dice <-
+  assign_fine_labels(sce, DatabaseImmuneCellExpressionData())
+```
+
+```{r dice_table, echo=FALSE, eval=F}
+table(so$fine_lbl.dice,
+      so$pruned.labels_singleR_fine)
+```
+
+```{r dice_umap, fig.width=12, fig.height=6, echo=F, eval=F}
+umap_plot(so, "fine_lbl.dice", "DICE")
+```
+
+## Human Primary Cell Atlas
+
+```{r assign_hpca, echo=FALSE}
+so$fine_lbl.hpca <-
+  assign_fine_labels(sce, HumanPrimaryCellAtlasData())
+```
+
+```{r hpca_table, echo=FALSE}
+table(so$fine_lbl.hpca,
+      so$pruned.labels_singleR_fine)
+```
+
+```{r hpca_umap, fig.width=12, fig.height=6, echo=F}
+umap_plot(so, "fine_lbl.hpca", "Human Primary Cell Atlas")
+```
+
+## Blueprint/ENCODE
+
+```{r assign_be, echo=FALSE}
+so$fine_lbl.be <-
+  assign_fine_labels(sce, BlueprintEncodeData())
+```
+
+```{r be_table, echo=FALSE}
+table(so$fine_lbl.be,
+      so$pruned.labels_singleR_fine)
+```
+
+```{r be_umap, fig.width=12, fig.height=6, echo=F}
+umap_plot(so, "fine_lbl.be", "Blueprint/ENCODE")
+```
+
+## Immunological Genome Project
+
+```{r assign_im, echo=FALSE}
+so$fine_lbl.im <-
+  assign_fine_labels(sce, ImmGenData())
+```
+
+```{r im_table, echo=FALSE}
+table(so$fine_lbl.im,
+      so$pruned.labels_singleR_fine)
+```
+
+```{r im_umap, fig.width=12, fig.height=6, echo=F}
+umap_plot(so, "fine_lbl.im", "ImmGen")
+```
+
+## Novershtern
+
+```{r assign_nv, echo=FALSE}
+so$fine_lbl.nv <-
+  assign_fine_labels(sce, NovershternHematopoieticData())
+```
+
+```{r nv_table, echo=FALSE}
+table(so$fine_lbl.nv,
+      so$pruned.labels_singleR_fine)
+```
+
+```{r nv_umap, fig.width=12, fig.height=6, echo=F}
+umap_plot(so, "fine_lbl.nv", "Novershtern")
+```
+
+# Session info
+
+```{r session_info, echo=FALSE}
+sessionInfo()
+```
