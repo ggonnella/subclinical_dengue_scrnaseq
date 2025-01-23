@@ -1,0 +1,131 @@
+---
+title: "InDen B cells | Gene Sets Expression Analysis Results | GO"
+author: "Giorgio Gonnella"
+date: 2024-04-29
+output:
+  html_document:
+    theme: sandstone
+params:
+  pfx: "/srv/baia/"
+  libpath: "/home/giorgio/R-pkg-Seurat5/"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message=F, warning=F, echo=T)
+.libPaths(c(params$libpath, .libPaths()))
+
+library(ggplot2)
+library(enrichplot)
+library(clusterProfiler)
+library(pathview)
+library(Organism.dplyr)
+library(fgsea)
+library(DOSE)
+
+prj_root <- paste0(params$pfx, "inden/")
+analysis_root <- paste0(prj_root, "analysis-1/")
+
+prev_step_dir <- paste0(analysis_root, "steps/111.0.P.B.gsea_analysis/")
+input_var_dir <- paste0(prev_step_dir, "results/vars/")
+if (!dir.exists(input_var_dir)) {
+  stop("Input variable directory does not exist: ", input_var_dir)
+}
+
+
+this_step_dir <- paste0(analysis_root, "steps/111.0.V.B.gsea_results/")
+if (!dir.exists(this_step_dir)) {
+  stop("Current step directory does not exist: ", this_step_dir)
+}
+
+results_dir <- paste0(this_step_dir, "results/")
+tables_dir <- paste0(results_dir, "tables/")
+dir.create(tables_dir, showWarnings = F, recursive = T)
+plots_dir <- paste0(results_dir, "plots/")
+for (subdir in c("barplots", "dotplots", "cnet_plots", "emap_plots",
+                "ridgeplots", "gsea_plots")) {
+  dir.create(paste0(plots_dir, subdir), showWarnings = F, recursive = T)
+}
+
+organism <- "org.Hs.eg.db"
+require(org.Hs.eg.db)
+keytypes(org.Hs.eg.db)
+
+helpers_dir = paste0(prj_root, "helpers/")
+source(paste0(helpers_dir, "de_helpers.R"))
+```
+
+```{r sanitize_group_name}
+# change anything which is not A-Z0-9_ to _
+sanitize_group_name <- function(group) {
+  gsub("[^A-Za-z0-9_]", "_", group)
+}
+```
+
+```{r load_input_data}
+so <- readRDS(file = paste0(input_var_dir, "so_w_gsea.rds"))
+```
+
+```{r}
+genes <- so@misc$gsea$go_genelist
+
+for (group in names(so@misc$gsea$go)) {
+  gse <- so@misc$gsea$go[[group]]
+  if (nrow(gse) == 0) {
+    print(paste0(group, ": No significant gene sets enrichment found"))
+  } else {
+
+    print(paste0(group, ": ", nrow(gse),
+                 " significant gene sets enrichment found"))
+
+    group <- sanitize_group_name(group)
+
+    gse_df <- as.data.frame(gse)
+    fname <- paste0(tables_dir, group, ".gsea.GO.tsv")
+    write.csv(gse_df, file = fname, row.names = FALSE)
+
+    plt <- gsea_barplot(gse) +
+           labs(title = "Top 20 Enriched GO Terms", x = "GO Term")
+    fname <- paste0(plots_dir, "barplots/", group, ".barplot.GO.pdf")
+    print(plt)
+    ggsave(fname, plot = plt, width = 10, height = 8)
+
+    pdf(paste0(plots_dir, "dotplots/", group, ".dotplot.GO.pdf"),
+        width = 10, height = 12)
+    plt <- dotplot(gse, showCategory = 10, split = ".sign") +
+           facet_grid(.~.sign)
+    print(plt)
+    dev.off()
+
+    pdf(paste0(plots_dir, "cnet_plots/", group, ".cnet_plot.GO.pdf"),
+        width = 10, height = 16)
+    plt <- cnetplot(gse, categorySize = "pvalue", foldChange = genes,
+                    showCategory = 3)
+    print(plt)
+    dev.off()
+
+    pdf(paste0(plots_dir, "emap_plots/", group, ".emap_plot.GO.pdf"),
+        width = 10, height = 8)
+    plt <- emapplot(pairwise_termsim(gse), showCategory = 10)
+    print(plt)
+    dev.off()
+
+    pdf(paste0(plots_dir, "ridgeplots/", group, ".ridgeplot.GO.pdf"),
+        width = 8, height = 18)
+    plt <- ridgeplot(gse) + labs(x = "enrichment distribution")
+    print(plt)
+    dev.off()
+
+    plt <- gseaplot(gse, by = "all", title = gse$Description[1], geneSetID = 1)
+    print(plt)
+    ggsave(plot = plt, file=paste0(plots_dir, "gsea_plots", group,
+                                   ".gsea_plot.GO.pdf"),
+           width=8, height=8)
+  }
+}
+```
+
+# Session info
+
+```{r}
+sessionInfo()
+```
