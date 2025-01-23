@@ -24,8 +24,41 @@ K2H=$SCRIPT_DIR/knit2html
 
 for rmd in \
   106.0.P.B.merging.seurat/rundir/merging.Rmd \
-  106.0.V.B.post_merging/rundir/post_merging_analysis.Rmd \
-  106.0.V.B.post_merging/rundir/post_merging_res_selection.Rmd
+  106.0.V.B.merged/rundir/post_merging.Rmd \
+  \
+  107.0.P.B.integration.harmony/rundir/harmony.Rmd \
+  107.0.P.B.integration.harmony/rundir/post_processing.Rmd \
+  107.0.V.B.integrated/rundir/post_harmony_analysis.Rmd \
+  107.0.V.B.integrated/rundir/res_selection.Rmd \
+  107.0.V.B.integrated/rundir/cmp_singleR_refs.Rmd \
+  \
+  108.0.P.B.split_plasmablasts/rundir/split.Rmd \
+  108.0.V.B.splitted_plasmablasts/rundir/post_split_analysis.Rmd \
+  \
+  109.0.P.B.scMetabolism/rundir/run_scMetabolism.Rmd \
+  109.0.V.B.metabolism_plots/rundir/scMetabolism_results.Rmd \
+  \
+  110.0.P.B.de_analysis/rundir/compute_de.Rmd \
+  110.0.V.B.de_results/rundir/de_dotplots.Rmd \
+  110.0.V.B.de_results/rundir/deseq_tables_and_vulcanos.Rmd \
+  \
+  111.0.P.B.gsea_analysis/rundir/compute_gsea.Rmd \
+  111.0.V.B.gsea_results/rundir/gsea_go.Rmd \
+  111.0.V.B.gsea_results/rundir/gsea_kegg.Rmd \
+  \
+  112.0.P.B.isolate_plasmablasts/rundir/isolate_plasmablasts.Rmd \
+  112.0.V.B.isolated_plasmablasts/rundir/analysis_isolated_plasmablasts.Rmd \
+  \
+  113.0.P.B.BCR_analysis.platypus/rundir/platypus_create.Rmd \
+  113.0.P.B.BCR_analysis.platypus/rundir/post_processing.Rmd \
+  113.0.P.B.BCR_analysis.platypus/rundir/further_post_processing.Rmd \
+  113.0.V.B.BCR_results/rundir/gene_usage.Rmd \
+  113.0.V.B.BCR_results/rundir/shm_analysis.Rmd \
+  113.0.V.B.BCR_results/rundir/cdr3_region.Rmd \
+  113.0.V.B.BCR_results/rundir/clonotypes.Rmd \
+  \
+  114.0.P.B.enclone_preparation/rundir/output_barcode_table.Rmd \
+  114.0.V.B.enclone_plots/rundir/create_enclone_plots.Rmd
 do
   # if rundir does not exist, create it and link the scripts file
   rundir=$(dirname $STEPS_DIR/$rmd)
