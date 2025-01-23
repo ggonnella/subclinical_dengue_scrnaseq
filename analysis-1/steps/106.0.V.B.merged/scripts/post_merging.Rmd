@@ -1,0 +1,153 @@
+---
+title: "InDen B cells | Data visualization after merging, before integration"
+author: "Giorgio Gonnella"
+date: 2024-04-29
+output:
+  html_document:
+    theme: sandstone
+params:
+  pfx: "/srv/baia/"
+  libpath: "/home/giorgio/R-pkg-Seurat5/"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message=F, warning=F, echo=F)
+.libPaths(c(params$libpath, .libPaths()))
+
+library(Seurat)
+library(viridis)
+library(RColorBrewer)
+library(ggplot2)
+
+prj_root <- paste0(params$pfx, "inden/")
+analysis_root <- paste0(prj_root, "analysis-1/")
+
+input_step_dir <- paste0(analysis_root, "steps/106.0.P.B.merging.seurat/")
+input_var_dir <- paste0(input_step_dir, "results/vars/")
+if (!dir.exists(input_var_dir)) {
+  stop("Input variable directory does not exist: ", input_var_dir)
+}
+```
+
+```{r load, echo=F}
+so <- readRDS(paste0(input_var_dir, "merged_so.rds"))
+sample_cols <- colorRampPalette(brewer.pal(8, name = "Accent"))(
+                  length(unique(so$orig.ident)))
+```
+
+## PCA
+
+### Genes in PCs
+
+```{r pc_genes, echo=FALSE}
+print(x = so[["pca"]], dims = 1:5, nfeatures = 20)
+```
+
+### PCA Biplot
+
+```{r pca_biplot, fig.align="center", fig.width=8, fig.height=4, echo=FALSE}
+DimPlot(object = so, reduction = "pca", group.by = "orig.ident",
+        cols = sample_cols)
+```
+
+### Elbow plot
+
+```{r elbow_plot, fig.align="center", echo=FALSE}
+ElbowPlot(object = so, ndims = 50)
+```
+
+## UMAP
+
+UMAP plot, colored by sample
+
+```{r umap, fig.align="center", fig.width=12, fig.height=6, echo=F}
+DimPlot(object = so, reduction = "umap",
+        group.by = "orig.ident", cols = sample_cols)
+```
+
+### Basic metrics
+
+Basic metrics projected onto the UMAP space
+
+```{r umap_basic_metrics, fig.align="center", echo=F}
+FeaturePlot(so, reduction = "umap",
+            features = "nCount_RNA") + scale_color_viridis()
+FeaturePlot(so, reduction = "umap",
+            features = "nFeature_RNA") + scale_color_viridis(option = "inferno")
+FeaturePlot(so, reduction = "umap",
+            features = "percent.mito") + scale_color_viridis(option = "magma")
+DimPlot(object = so, reduction = "umap", group.by = "Phase",
+            cols = c("#00AFBB", "#E7B800", "#FC4E07"))
+```
+
+## Clustering
+
+Selected cluster resolution: 0.4
+```{r selected_clustering_resolution, echo=F}
+sel_res <- "0.4"
+g.b = paste0("RNA_snn_res.", sel_res)
+cl_cols <- colorRampPalette(brewer.pal(9, name = "Set1"))(
+              length(unique(so@meta.data[[g.b]])))
+```
+
+```{r umap_clustering, fig.align="center", fig.width=12, fig.height=6, echo=F}
+print(DimPlot(object = so, reduction = "umap",
+        group.by = g.b, label = TRUE, cols = cl_cols))
+print(VlnPlot(object = so, features = c("nCount_RNA",
+       "nFeature_RNA", "percent.mito"), group.by = g.b, cols = cl_cols))
+sample_vs_cl <- as.data.frame(
+  round(prop.table(table(so@meta.data[[g.b]],
+                         so$orig.ident), margin = 1)*100,
+        digits = 2)
+)
+colnames(sample_vs_cl)[1:2] <- c("Seurat_Cl", "Sampleid")
+levels(sample_vs_cl$Seurat_Cl) <-
+  paste("Cl", levels(sample_vs_cl$Seurat_Cl), sep = "_")
+print(ggplot(sample_vs_cl, aes(x = Seurat_Cl, y = Freq, fill = Sampleid))+
+  geom_bar(stat = "identity", alpha = .98)+
+  coord_flip()+
+  theme_minimal()+
+  scale_fill_manual(values = sample_cols))
+```
+
+## Cell types
+
+SingleR cell type annotations
+
+```{r rename_unchar_to_uncharacterized, echo=F}
+so$pruned.labels_singleR_main <- gsub("unchar", "uncharacterized",
+                                      so$pruned.labels_singleR_main)
+so$pruned.labels_singleR_fine <- gsub("unchar", "uncharacterized",
+                                      so$pruned.labels_singleR_fine)
+```
+
+### Main cell types
+
+```{r umap_singleR_main, fig.width=12, fig.height=6, echo=F}
+mctype_col <- colorRampPalette(brewer.pal(6, "Accent"))(length(unique(so$pruned.labels_singleR_main)))
+DimPlot(object = so, reduction = "umap", group.by = "pruned.labels_singleR_main",
+        cols = mctype_col, label = TRUE, repel = TRUE)
+```
+
+```{r celltypes_per_sample_table_main, echo=F}
+knitr::kable(as.data.frame.matrix(round(prop.table(table(so$orig.ident,
+                                                         so$pruned.labels_singleR_main), margin = 2)*100, digits = 2)))
+```
+
+### Fine cell types
+
+```{r umap_singleR_fine, fig.width=12, fig.height=6, echo=F}
+fctype_col <- colorRampPalette(brewer.pal(6, "Accent"))(length(unique(so$pruned.labels_singleR_fine)))
+DimPlot(object = so, reduction = "umap", group.by = "pruned.labels_singleR_fine", cols = fctype_col, label = TRUE, repel = TRUE)
+```
+
+```{r celltypes_per_sample_table_fine, echo=F}
+knitr::kable(as.data.frame.matrix(round(prop.table(table(so$orig.ident,
+                                                         so$pruned.labels_singleR_fine), margin = 2)*100, digits = 2)))
+```
+
+## Session info
+
+```{r, echo=F}
+sessionInfo()
+```
