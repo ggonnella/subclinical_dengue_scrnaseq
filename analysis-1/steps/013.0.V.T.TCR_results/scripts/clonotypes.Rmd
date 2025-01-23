@@ -1,0 +1,461 @@
+---
+title: "InDen T cells | TCR Analysis | Clonotypes"
+author: "Giorgio Gonnella"
+date: "2024-10-14"
+output:
+  html_document:
+    theme: sandstone
+params:
+  pfx: "/srv/baia/"
+  libpath: "/home/giorgio/R-pkg-Seurat5/"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message=F, warning=F, echo=T)
+.libPaths(c(params$libpath, .libPaths()))
+
+library(Platypus)
+library(ggplot2)
+library(dplyr)
+
+prj_root <- paste0(params$pfx, "inden/")
+analysis_root <- paste0(prj_root, "analysis-1/")
+
+input_step_dir <- paste0(analysis_root,
+                         "steps/013.0.P.T.TCR_analysis.platypus/")
+input_var_dir <- paste0(input_step_dir, "results/vars/")
+if (!dir.exists(input_var_dir)) {
+  stop("Input variable directory does not exist: ", input_var_dir)
+}
+
+this_step_dir <- paste0(analysis_root, "steps/013.0.V.T.TCR_results/")
+if (!dir.exists(this_step_dir)) {
+  stop("Current step directory does not exist: ", this_step_dir)
+}
+plots_dir <- paste0(this_step_dir, "results/plots/")
+tables_dir <- paste0(this_step_dir, "results/tables/")
+dir.create(plots_dir, showWarnings = F, recursive = T)
+dir.create(tables_dir, showWarnings = F, recursive = T)
+
+helpers_dir = paste0(prj_root, "helpers/")
+source(paste0(helpers_dir, "ggplot2_helpers.R"))
+source(paste0(helpers_dir, "platypus_helpers.R"))
+```
+
+# Load data
+
+```{r load_vgm}
+vgm <- readRDS(file = paste0(input_var_dir, "vgm.rds"))
+vgm_HL <- readRDS(file = paste0(input_var_dir, "vgm_HL.rds"))
+```
+
+# Clonotype size
+
+Size of the clonotype to which each cell belongs to.
+
+## All cells
+
+```{r clonotype_size_table}
+print(table(vgm[["GEX"]]$clonotype_size))
+```
+
+### Binned
+
+```{r clonotype_size_bin_table}
+print(table(vgm[["GEX"]]$clonotype_size_bin))
+```
+
+Projected on UMAP:
+
+```{r}
+plt <- DimPlot(vgm[["GEX"]], reduction = "umapharm",
+        group.by = "clonotype_size_bin", pt.size = 0.01,
+        split.by = "clinical_condition") +
+  scale_color_manual(values = vgm$GEX@misc$clonotype_size_bin_cols) +
+  labs(color = "Clonotype size") +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  ) + ggtitle("Clonotype size on UMAP plot") +
+  labs(x = "UMAP Harmony 1", y = "UMAP Harmony 2")
+fname <- paste0(plots_dir, "T.clonotype_size_umapharm.svg")
+ggsave(fname, plt, device = "svg", width=12, height=6)
+plt
+```
+
+## Cells with both VDJ and VJ sequences
+
+```{r clonotype_size_table_HL}
+print(table(vgm_HL[["GEX"]]$clonotype_size))
+```
+
+### Binned
+
+```{r clonotype_size_bin_table_HL}
+print(table(vgm_HL[["GEX"]]$clonotype_size_bin))
+```
+
+## By sample
+
+```{r clonotype_size_by_sample_table}
+table(vgm[["GEX"]]$clonotype_size, vgm[["GEX"]]$sample_name)
+```
+
+### Binned
+
+```{r clonotype_size_by_sample_bin_table}
+table(vgm[["GEX"]]$clonotype_size_bin, vgm[["GEX"]]$sample_name)
+```
+
+## By clinical condition
+
+```{r clonotype_size_by_cond_table}
+table(vgm[["GEX"]]$clonotype_size, vgm[["GEX"]]$clinical_condition)
+```
+
+### Binned
+
+```{r clonotype_size_by_cond_bin_table}
+table(vgm[["GEX"]]$clonotype_size_bin, vgm[["GEX"]]$clinical_condition)
+```
+
+## By cell type
+
+```{r clone_size_by_celltype_table}
+table(vgm[["GEX"]]$clonotype_size, vgm[["GEX"]]$celltype.abbrev)
+```
+
+### Binned
+
+```{r clone_size_by_celltype_bin_table}
+table(vgm[["GEX"]]$clonotype_size_bin, vgm[["GEX"]]$celltype.abbrev)
+```
+
+```{r}
+data <- data.frame(
+  sample_name = factor(vgm[["GEX"]]$sample_name),
+  size = vgm[["GEX"]]$clonotype_size_bin
+)
+
+plot_data <- data %>%
+  group_by(sample_name, size) %>%
+  summarise(count = n())
+
+plt <- ggplot(plot_data, aes(x=sample_name, y=count, fill=size)) +
+  geom_bar(stat="identity", position="stack") +
+  xlab("Sample") +
+  ylab("Clonotype Size (count)") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  scale_fill_manual(values = vgm$GEX@misc$clonotype_size_bin_cols)
+print(plt)
+```
+
+```{r}
+plot_data <- plot_data %>%
+  group_by(sample_name) %>%
+  mutate(proportion = count / sum(count))
+
+plt <- ggplot(plot_data, aes(x=sample_name, y=proportion, fill=size)) +
+  geom_bar(stat="identity", position="fill") +
+  xlab("Sample") +
+  ylab("Clonotype Size (relative)") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  scale_fill_manual(values = vgm$GEX@misc$clonotype_size_bin_cols)
+print(plt)
+```
+
+```{r}
+data <- data.frame(
+  condition = factor(vgm[["GEX"]]$clinical_condition),
+  size = vgm[["GEX"]]$clonotype_size_bin
+)
+
+plot_data <- data %>%
+  group_by(condition, size) %>%
+  summarise(count = n())
+
+plt <- ggplot(plot_data, aes(x=condition, y=count, fill=size)) +
+  geom_bar(stat="identity", position="stack") +
+  xlab("Clinical Condition") +
+  ylab("Clonotype Size (count)") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  scale_fill_manual(values = vgm$GEX@misc$clonotype_size_bin_cols)
+print(plt)
+```
+
+```{r}
+plot_data <- plot_data %>%
+  group_by(condition) %>%
+  mutate(proportion = count / sum(count))
+
+plt <- ggplot(plot_data, aes(x=condition, y=proportion, fill=size)) +
+  geom_bar(stat="identity", position="fill") +
+  xlab("Clinical Condition") +
+  ylab("Clonotype Size (relative)") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  scale_fill_manual(values = vgm$GEX@misc$clonotype_size_bin_cols)
+print(plt)
+```
+
+```{r, fig.height=16}
+plt <- cmp_clonotype_size_plot(vgm, relative=F, ident="celltype.abbrev",
+                               group = "sample_name",
+                               bin_cols = vgm$GEX@misc$clonotype_size_bin_cols)
+plt
+```
+
+
+```{r, fig.height=16}
+plt <- cmp_clonotype_size_plot(vgm, relative=T, ident="celltype.abbrev",
+                               group = "sample_name",
+                               bin_cols = vgm$GEX@misc$clonotype_size_bin_cols)
+print(plt)
+```
+
+```{r, fig.height=16}
+plt <- cmp_clonotype_size_plot(vgm, relative=F, ident="celltype.abbrev",
+                               group = "clinical_condition.abbrev",
+                               bin_cols = vgm$GEX@misc$clonotype_size_bin_col)
+print(plt)
+```
+
+
+```{r, fig.height=16}
+plt <- cmp_clonotype_size_plot(vgm, relative=T, ident="celltype.abbrev",
+                               group = "clinical_condition.abbrev",
+                               bin_cols = vgm$GEX@misc$clonotype_size_bin_cols)
+print(plt)
+```
+
+```{r, fig.height=16}
+for (celltype in unique(vgm[["VDJ"]]$celltype.abbrev)) {
+  plt <- cmp_clonotype_size_plot(vgm, relative=F, ident="celltype.abbrev",
+                               group = "clinical_condition.abbrev",
+                               bin_cols = vgm$GEX@misc$clonotype_size_bin_cols,
+                               sel_celltype = celltype)
+  print(plt)
+}
+```
+
+```{r, fig.height=16, fig.width=8}
+vgm <- transfer_gex_to_vdj(vgm, "pruned.labels_singleR_fine.abbrev")
+for (celltype in c("CD8+ EM")) {
+  plt <- cmp_clonotype_size_plot(vgm, relative=T,
+                               ident="pruned.labels_singleR_fine.abbrev",
+                               group = "clinical_condition.abbrev",
+                               celltype_col="pruned.labels_singleR_fine.abbrev",
+                               bin_cols = vgm$GEX@misc$clonotype_size_bin_cols,
+                               sel_celltype = celltype, compute_pval = T,
+                               hide_legend=T)
+  celltype_sanitized <- gsub("[^[:alnum:]]", "_", celltype)
+  fname <- paste0(plots_dir, "T.", celltype_sanitized, "_clonotype_size.svg")
+  ggsave(fname, plt, device = "svg", width=4, height=6)
+  print(plt)
+}
+```
+
+```{r, fig.height=8, fig.width=4}
+for (celltype in unique(vgm[["VDJ"]]$celltype.abbrev)) {
+  plt <- cmp_clonotype_size_plot(vgm, relative=T, ident="celltype.abbrev",
+                               group = "clinical_condition.abbrev",
+                               bin_cols = vgm$GEX@misc$clonotype_size_bin_cols,
+                               sel_celltype = celltype,  compute_pval = T,
+                               hide_legend=T)
+  celltype_sanitized <- gsub("[^[:alnum:]]", "_", celltype)
+  fname <- paste0(plots_dir, "T.", celltype_sanitized, "_clonotype_size.svg")
+  ggsave(fname, plt, device = "svg", width=4, height=8)
+  print(plt)
+}
+```
+
+```{r}
+for (celltype in unique(vgm[["VDJ"]]$celltype.abbrev)) {
+  plt <- celltype_cmp_clonotype_size_plot(vgm, celltype,
+                                   vgm$GEX@misc$sample_cond_table,
+                                   celltype_col = "celltype.abbrev",
+                                   ident_col = "sample",
+                                   group_col = "clinical_condition",
+                                   group1 = "Subclinical",
+                                   group2 = "Hospitalized",
+                                   bin_cols =
+                                     vgm$GEX@misc$clonotype_size_bin_cols)
+  celltype_sanitized <- gsub("[^[:alnum:]]", "_", celltype)
+  fname <- paste0(plots_dir, "T.", celltype_sanitized,
+                  "_clonotype_size_cmp.svg")
+  ggsave(fname, plt, device = "svg", width=10, height=6)
+  print(plt)
+}
+```
+
+```{r}
+abbrev_colors = c()
+for (i in 1:length(vgm[["GEX"]]@misc$fctype_mod_cols)) {
+  celltype <- names(vgm[["GEX"]]@misc$fctype_mod_cols)[i]
+  abbrev <- vgm[["GEX"]]@misc$pruned.labels_singleR_fine.abbrev[celltype]
+  abbrev_colors[abbrev] <- vgm[["GEX"]]@misc$fctype_mod_cols[[celltype]]
+}
+
+celltype_counts <- vgm[["GEX"]]@meta.data %>%
+  group_by(clinical_condition, clonotype_size_bin, celltype.abbrev) %>%
+  summarise(count = n()) %>%
+  ungroup()
+
+plt <- ggplot(celltype_counts, aes(x = clonotype_size_bin, y = count,
+                            fill = celltype.abbrev)) +
+  geom_bar(stat = "identity", position = "fill") +
+  scale_fill_manual(values = abbrev_colors) +
+  theme_minimal() +
+  labs(x = "Clonotype Size", y = "Frequency", fill = "Cell Type") +
+  facet_wrap(~ clinical_condition) +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.title = element_blank()
+  )
+fname <- paste0(plots_dir, "T.celltypes_clonotypes_barplots.svg")
+ggsave(fname, plt, device = "svg", width=12, height=6)
+plt
+```
+
+## Shared clonotypes
+
+```{r}
+shared_clonotypes <- VDJ_overlap_sorted_heatmap(vgm$VDJ, c("clonotype_id"),
+                                                grouping.column = "sample_name",
+                                                group.by = "clinical_condition",
+                                                axis.label.size = 12,
+                                                pvalues.label.size = 6)
+print(shared_clonotypes[[1]])
+```
+
+## Shared CD3s sequences
+
+```{r}
+vj_cdr3s_aa_oh <- VDJ_overlap_sorted_heatmap(vgm_HL$VDJ, c("VJ_cdr3s_aa"),
+                                             grouping.column = "sample_name",
+                                             group.by = "clinical_condition",
+                                             axis.label.size = 12,
+                                             pvalues.label.size = 6)
+plt <- vj_cdr3s_aa_oh[[1]]
+fname <- paste0(plots_dir, "VJ_cdr3s_aa.overlap.svg")
+ggsave(fname, plt)
+print(plt)
+```
+
+```{r}
+vdj_cdr3s_aa_oh <- VDJ_overlap_sorted_heatmap(vgm_HL$VDJ, c("VDJ_cdr3s_aa"),
+                                              grouping.column = "sample_name",
+                                              group.by = "clinical_condition",
+                                              axis.label.size = 12,
+                                              pvalues.label.size = 6)
+plt <- vdj_cdr3s_aa_oh[[1]]
+fname <- paste0(plots_dir, "VDJ_cdr3s_aa.overlap.svg")
+ggsave(fname, plt)
+print(plt)
+```
+
+```{r}
+vdj_vj_cdr3s_aa_oh <- VDJ_overlap_sorted_heatmap(vgm_HL$VDJ,
+                                          c("VDJ_cdr3s_aa", "VJ_cdr3s_aa"),
+                                          grouping.column = "sample_name",
+                                          group.by = "clinical_condition",
+                                          axis.label.size = 12,
+                                          pvalues.label.size = 6)
+plt <- vdj_vj_cdr3s_aa_oh[[1]]
+fname <- paste0(plots_dir, "VDJ_VJ_cdr3s_aa.overlap.svg")
+ggsave(fname, plt)
+print(plt)
+```
+
+```{r}
+# more information on the only shared sequence
+shared <- vdj_vj_cdr3s_aa_oh[[2]][1,]
+cdr3s <- str_split(shared$items.overlapping, '/')
+vdj_cdr3s <- cdr3s[[1]][[1]]
+vj_cdr3s <- cdr3s[[1]][[2]]
+shared_vdj <- subset(vgm_HL$VDJ, VDJ_cdr3s_aa == vdj_cdr3s)
+shared_both <- subset(shared_vdj, VJ_cdr3s_aa == vj_cdr3s)
+print(vdj_cdr3s)
+print(vj_cdr3s)
+print(table(shared_both$celltype, shared_both$sample_name))
+```
+
+### Clonotypes shared by 2 or more samples
+
+```{r}
+cstab <- table(vgm$VDJ$clonotype_id, vgm$VDJ$sample)
+shared_cs <- apply(cstab, 1, function(x) sum(x > 0))
+clonotypes_by_sample_count <- lapply(1:max(shared_cs), function(n) {
+                                     rownames(cstab)[shared_cs == n]})
+clonotype_dfs <- list()
+for (n in 2:length(clonotypes_by_sample_count)) {
+  clonotypes <- clonotypes_by_sample_count[[n]]
+  clonotype_dfs[[n]] <-
+    do.call(rbind, lapply(clonotypes, function(clonotype_id) {
+      clonotype_size <-
+        vgm$VDJ[vgm$VDJ$clonotype_id == clonotype_id, ][1, ]$clonotype_size
+      samples_counts <- cstab[clonotype_id, ][cstab[clonotype_id, ] > 0]
+      formatted_samples <-
+        paste(names(samples_counts), samples_counts, sep = ":", collapse = ",")
+      data.frame(
+        clonotype_id = clonotype_id,
+        clonotype_size = clonotype_size,
+        samples = paste(names(samples_counts), collapse = ","),
+        frequency_per_sample = formatted_samples
+      )
+    }))
+  clonotype_dfs[[n]] <-
+    clonotype_dfs[[n]][order(clonotype_dfs[[n]]$clonotype_size, decreasing=T), ]
+}
+
+print(clonotype_dfs)
+```
+
+## Most frequent clonotypes
+
+```{r}
+most_freq <- most_freq_cd3s_aa_plot(vgm$VDJ, color_lbl = "Sample ID",
+                                    cols = vgm$GEX@misc$sample_cols)
+fname <- paste0(plots_dir, "T.most_freq_clonotypes.VDJ.by_sample.svg")
+ggsave(fname, most_freq$plot, device = "svg", width=3, height=2.6, scale=1.5)
+print(most_freq$plot)
+
+# common sequences
+aaS <- most_freq$cdr3_usage_top[
+          most_freq$cdr3_usage_top$clinical_condition ==
+            "Subclinical", ]$VDJ_cdr3s_aa
+aaH <- most_freq$cdr3_usage_top[
+          most_freq$cdr3_usage_top$clinical_condition ==
+            "Hospitalized", ]$VDJ_cdr3s_aa
+intersection = intersect(aaS, aaH)
+print(paste0("Common sequences between most frequent ",
+             "Subclinical and Hospitalized (", length(intersection), ")"))
+if (length(intersection) > 0) { print(intersection)}
+
+for (celltype in unique(vgm[["VDJ"]]$celltype.abbrev)) {
+  most_freq <- most_freq_cd3s_aa_plot(vgm$VDJ, color_lbl = "Sample",
+        sel_celltype = celltype, celltype_col = "celltype.abbrev",
+        color_by = "sample_name", cols = vgm$GEX@misc$sample_name_cols,
+        title="", group_col = "clinical_condition",
+        short_title=T)
+  most_freq$plot <- most_freq$plot +
+    theme(axis.line = element_line(colour = "black"),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          panel.border = element_blank(),
+          panel.background = element_blank())
+
+  celltype_sanitized <- gsub("[^[:alnum:]]", "_", celltype)
+  fname <- paste0(plots_dir, "T.most_freq_clonotypes.VDJ.by_sample.",
+                  celltype_sanitized, ".svg")
+  ggsave(fname, most_freq$plot, device = "svg",
+         width=4.5, height=2.6, scale=1.5)
+  print(most_freq$plot)
+}
+```
+
+# Session info
+
+```{r}
+sessionInfo()
+```

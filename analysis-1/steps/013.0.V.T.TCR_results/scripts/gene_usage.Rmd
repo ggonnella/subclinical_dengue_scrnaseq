@@ -1,0 +1,198 @@
+---
+title: "InDen T cells | TCR analysis | Gene Usage"
+author: "Giorgio Gonnella"
+date: "2024-10-14"
+output:
+  html_document:
+    theme: sandstone
+params:
+  pfx: "/srv/baia/"
+  libpath: "/home/giorgio/R-pkg-Seurat5/"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message=F, warning=F, echo=T)
+.libPaths(c(params$libpath, .libPaths()))
+
+library(Platypus)
+library(ggplot2)
+
+prj_root <- paste0(params$pfx, "inden/")
+analysis_root <- paste0(prj_root, "analysis-1/")
+
+input_step_dir <- paste0(analysis_root,
+                         "steps/013.0.P.T.TCR_analysis.platypus/")
+input_var_dir <- paste0(input_step_dir, "results/vars/")
+if (!dir.exists(input_var_dir)) {
+  stop("Input variable directory does not exist: ", input_var_dir)
+}
+
+this_step_dir <- paste0(analysis_root, "steps/013.0.V.T.TCR_results/")
+if (!dir.exists(this_step_dir)) {
+  stop("Current step directory does not exist: ", this_step_dir)
+}
+plots_dir <- paste0(this_step_dir, "results/plots/")
+tables_dir <- paste0(this_step_dir, "results/tables/")
+dir.create(plots_dir, showWarnings = F, recursive = T)
+dir.create(tables_dir, showWarnings = F, recursive = T)
+
+helpers_dir = paste0(prj_root, "helpers/")
+source(paste0(helpers_dir, "ggplot2_helpers.R"))
+source(paste0(helpers_dir, "platypus_helpers.R"))
+```
+
+# Load data
+
+```{r load_vgm}
+vgm <- readRDS(file = paste0(input_var_dir, "vgm.rds"))
+vgm_HL <- readRDS(file = paste0(input_var_dir, "vgm_HL.rds"))
+```
+
+## Gene usage - Beta chain
+
+### V gene
+
+```{r}
+plot <- DimPlot(vgm$GEX, reduction="umapharm", group.by="VDJ_vgene_grp",
+                split.by = 'clinical_condition',
+                na.value = "gray") +
+  ggtitle("Beta chain V gene group")
+split_print_legend(plot)
+```
+
+```{r}
+plot <- DimPlot(vgm$GEX, reduction="umapharm", group.by="VDJ_vgene",
+                split.by = 'clinical_condition',
+                na.value = "gray") +
+  ggtitle("Beta chain V gene allele")
+split_print_legend(plot)
+```
+
+### J gene
+
+```{r}
+plot <- DimPlot(vgm$GEX, reduction="umapharm", group.by="VDJ_jgene",
+                split.by = 'clinical_condition',
+                na.value = "gray") +
+  ggtitle("Beta chain J gene allele")
+split_print_legend(plot)
+```
+
+## Gene usage - Alpha chain
+
+### V gene
+
+```{r}
+plot <- DimPlot(vgm_HL$GEX, reduction="umapharm", group.by="VJ_vgene_grp",
+                split.by = 'clinical_condition') +
+  ggtitle("Alpha chain V gene group")
+split_print_legend(plot)
+```
+
+```{r}
+plot <- DimPlot(vgm_HL$GEX, reduction="umapharm", group.by="VJ_vgene",
+                split.by = 'clinical_condition') +
+  ggtitle("Alpha chain V gene allele")
+split_print_legend(plot)
+```
+
+### J gene
+
+```{r}
+p<-DimPlot(vgm_HL$GEX, reduction="umapharm", group.by="VJ_jgene",
+           split.by = 'clinical_condition') +
+           ggtitle("Alpha chain J gene")
+split_print_legend(p)
+```
+
+### Differential gene pairings analysis
+
+```{r}
+output_file <- paste0(tables_dir, "TCR.genes_diff_usage.all.tsv")
+write.table(vgm_HL$GEX@misc$gene_pairings$all, output_file, sep="\t",
+            row.names = FALSE, quote = FALSE)
+
+output_file <- paste0(tables_dir, "TCR.genes_diff_usage.signif.tsv")
+write.table(vgm_HL$GEX@misc$gene_pairings$p_filt, output_file, sep="\t",
+            row.names = FALSE, quote = FALSE)
+```
+
+### Gene usage pairings plots
+
+```{r no_grays_palette, fig.height=12, fig.width=8}
+no_grays_palette <- c(
+  brewer.pal(9, "Set1")[c(1:8)],
+  brewer.pal(8, "Set2")[c(1:7)],
+  brewer.pal(12, "Set3")[c(1:8)],
+  brewer.pal(12, "Set3")[c(10:12)],
+  brewer.pal(8, "Dark2")[1:7]
+)
+```
+
+```{r collect_signif_pairs_list}
+signif_pairs = list()
+results <- vgm_HL$GEX@misc$gene_pairings$p_filt
+for (celltype in unique(results$celltype)) {
+    signif_pairs[[celltype]] = results$genes[results$celltype == celltype]
+}
+signif_pairs
+```
+
+```{r alluvial_plots_celltypes, fig.height=17, fig.width=8}
+for (celltype in unique(vgm[["VDJ"]]$celltype.abbrev)) {
+  print(celltype)
+  if (celltype %in% names(signif_pairs)) {
+    plt <- gene_usage_alluvial(vgm_HL[["VDJ"]], "VDJ_vgene", "VJ_vgene",
+                               left_lbl = "TRBV", right_lbl = "TRAV",
+                               sel_celltype = celltype,
+                               celltype_col = "celltype.abbrev",
+                               grp1 = "Subclinical", grp2 = "Hospitalized",
+                               min_clonotype_frequency=2,
+                               left_lbl_pfx = "TRBV", right_lbl_pfx = "TRAV",
+                               signif_pairs = signif_pairs[[celltype]],
+                               stratum_label_size = 4,
+                               stratum_label_threshold = 0.01,
+                               stratum_label_size_prop_factor = 0)
+    celltype_sanitized <- gsub("[^[:alnum:]]", "_", celltype)
+    fname = paste0(plots_dir, "T.alpha_beta_pairings.",
+                   celltype_sanitized, ".svg")
+    ggsave(fname, plt, device = "svg", width=6, height=13)
+    print(plt)
+  }
+}
+```
+
+```{r alluvial_plot_unsplitted, fig.height=17, fig.width=8}
+plt <- gene_usage_alluvial(vgm_HL[["VDJ"]], "VDJ_vgene", "VJ_vgene",
+                           left_lbl = "TRBV", right_lbl = "TRAV",
+                           sel_celltype = "CD8+ EM",
+                           celltype_col = "pruned.labels_singleR_fine.abbrev",
+                           grp1 = "Subclinical", grp2 = "Hospitalized",
+                           min_clonotype_frequency = 2,
+                           left_lbl_pfx = "TRBV", right_lbl_pfx = "TRAV",
+                           signif_pairs = signif_pairs[["CD8+ EM"]],
+                           stratum_label_size = 4,
+                           stratum_label_threshold = 0.01,
+                           stratum_label_size_prop_factor = 0)
+fname = paste0(plots_dir, "T.alpha_beta_pairings.CD8_EM.svg")
+ggsave(fname, plt, device = "svg", width=6, height=13)
+print(plt)
+```
+
+```{r alluvial_plot_total, fig.height=12, fig.width=8}
+plt <- gene_usage_alluvial(vgm_HL[["VDJ"]], "VDJ_vgene", "VJ_vgene",
+                                left_lbl = "TRBV", right_lbl = "TRAV",
+                                grp1 = "Subclinical", grp2 = "Hospitalized",
+                                left_lbl_pfx = "TRBV", right_lbl_pfx = "TRAV",
+                                min_clonotype_frequency=2,
+                                signif_pairs = signif_pairs$Total)
+fname = paste0(plots_dir, "T.alpha_beta_pairings.Total.svg")
+ggsave(fname, plt, device = "svg", width=12, height=8)
+print(plt)
+```
+
+# Session info
+
+```{r}
+sessionInfo()
+```
