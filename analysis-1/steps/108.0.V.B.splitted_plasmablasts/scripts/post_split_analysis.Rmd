@@ -233,27 +233,10 @@ for (cond in levels(so$clinical_condition)) {
 ### Proportion test
 
 ```{r proportion_plot, fig.width=8, fig.height=8, echo=F}
-so$cell_group <- NA
-for (group in names(so@misc$fctype_group)) {
-  so$cell_group <-
-    ifelse(so$pruned.labels_singleR_fine %in%
-           so@misc$fctype_group[[group]],
-           group, so$cell_group)
-}
-
-so@misc$proptest_mod@meta_data$cell_group <- NA
-for (group in names(so@misc$fctype_group)) {
-  so@misc$proptest_mod@meta_data$cell_group <-
-    ifelse(so@misc$proptest_mod@meta_data$pruned.labels_singleR_fine %in%
-           so@misc$fctype_group[[group]],
-           group, so@misc$proptest_mod@meta_data$cell_group)
-}
-
-plt <- grouped_combined_permutation_test_plot(so, so@misc$proptest_mod,
-            "pruned.labels_singleR_fine.mod.abbrev", "cell_group",
-            "clinical_condition", "Clinical Condition", so@misc$cond_cols,
-            so@misc$ctg_backcols)
-
+plt <- permutation_test_plot(so@misc$proptest_mod,
+            "pruned.labels_singleR_fine.mod.abbrev",
+            "clinical_condition",
+            condition_title = "Clinical Condition")
 fname <- paste0(plots_outdir, "singleR_proportion_test.svg")
 ggsave(fname, plot = plt, device = "svg")
 plt
@@ -457,10 +440,14 @@ knitr::kable(table(so$clinical_condition,
 ```
 
 ```{r umap_clustering, fig.align="center", fig.width=12, fig.height=6, echo=F}
-DimPlot(object = so, reduction = "umapharm",
+plt <- DimPlot(object = so, reduction = "umapharm",
         group.by = so@misc$sel_res_col, label = TRUE,
         cols = so@misc$cluster_cols,
         split.by = "clinical_condition")
+fname <- paste0(plots_outdir, "umap.by_cond.clustering_res_",
+                so@misc$sel_res,".svg")
+ggsave(fname, plot = plt, device = "svg")
+plt
 ```
 
 ### Sample contributions to clusters
