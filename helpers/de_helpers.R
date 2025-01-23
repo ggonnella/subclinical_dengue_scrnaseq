@@ -2,6 +2,42 @@ library(ggplot2)
 library(gridExtra)
 library(pheatmap)
 
+run_pb_deseq2 <- function(pseudo, selgenes, ident.1, ident.2,
+                          freqs = NULL) {
+  print(paste0("Computing DESeq2 for ", ident.1, " vs ", ident.2, "..."))
+  if (!ident.1 %in% Idents(pseudo)) {
+    print(paste0("  Skipped as ", ident.1 ," not found in pseudo"))
+    return()
+  }
+  if (!ident.2 %in% Idents(pseudo)) {
+    print(paste0("  Skipped as ", ident.2 ," not found in pseudo"))
+    return()
+  }
+  if (is.null(freqs)) {
+    freqs <- table(Idents(pseudo))
+  }
+  print(paste0("  Frequency of ", ident.1, ": ", freqs[[ident.1]]))
+  print(paste0("  Frequency of ", ident.2, ": ", freqs[[ident.2]]))
+  if (freqs[[ident.1]] < 3) {
+    print(paste0("  Skipped as ", ident.1 ," has less than 3 cells"))
+    return()
+  }
+  if (freqs[[ident.2]] < 3) {
+    print(paste0("  Skipped as ", ident.2 ," has less than 3 cells"))
+    return()
+  }
+
+  markers <- FindMarkers(pseudo, features = selgenes, logfc.threshold = 0.1,
+                         ident.1 = ident.1, ident.2 = ident.2,
+                         test.use = "DESeq2")
+  results <- list()
+  results$all <- markers
+  results$pval_filt <- markers %>% filter(p_val_adj < 0.05)
+  print(paste0("  Number of genes with adj p-value < 0.05: ",
+               nrow(results$pval_filt)))
+  results
+}
+
 #
 # Create a heatmap for a list of genes in multiple cell types,
 # starting from the output of the DE analysis.
@@ -303,32 +339,74 @@ gsea_barplot <- function(gse, top_n = 20, colors = c("blue", "red")) {
 #
 select_genes <- function(so, minrowsum = 0, keep_TCR = F,
                          keep_IG = F, keep_MT = F, keep_RP = F,
-                         keep_MALAT1 = F) {
+                         keep_MALAT1 = F, verbose = F) {
   selgenes <- rownames(so)
+  if (verbose) {
+    print(paste0("Initial number of genes: ", length(selgenes)))
+  }
   if (minrowsum > 0) {
+    if (verbose) {
+      print(paste0("Minimum row sum parameter: ", minrowsum))
+    }
     rs <- Matrix::rowSums(so@assays$RNA@counts)
     selgenes <- selgenes[rs > minrowsum]
+    if (verbose) {
+      print(paste0("Number of selected genes passing rowsum filter: ",
+                   length(selgenes)))
+    }
   }
   if (!keep_TCR) {
     TCRgenes <- grep(pattern = "^TR[AB][VC]", selgenes, value = TRUE)
     selgenes <- selgenes[!selgenes %in% TCRgenes]
+    if (verbose) {
+      print(paste0("Number of TCR genes to filter out: ", length(TCRgenes)))
+      print(paste0("Number of selected genes after TCR filter: ",
+                   length(selgenes)))
+    }
   }
   if (!keep_IG) {
     IGgenes <- c(grep(pattern = "^IG[HLK][VDJ]", selgenes, value = TRUE),
                    c("IGHG1", "IGHD", "IGHE", "IGHA[12]", "IGHG[1234]",
                      "IGKC", "IGLC[1234567]", "AC233755.1"))
     selgenes <- selgenes[!selgenes %in% IGgenes]
+    if (verbose) {
+      print(paste0("Number of IG genes to filter out: ", length(IGgenes)))
+      print(paste0("Number of selected genes after IG filter: ",
+                   length(selgenes)))
+    }
   }
   if (!keep_MT) {
     MTgenes <- grep(pattern = "^MT-", selgenes, value = TRUE)
     selgenes <- selgenes[!selgenes %in% MTgenes]
+    if (verbose) {
+      print(paste0("Number of Mitochondrial genes to filter out: ",
+                   length(MTgenes)))
+      print(paste0("Number of selected genes after MT filter: ",
+                   length(selgenes)))
+    }
   }
   if (!keep_RP) {
     RPgenes <- grep(pattern = "^RP[LS]", selgenes, value = TRUE)
     selgenes <- selgenes[!selgenes %in% RPgenes]
+    if (verbose) {
+      print(paste0("Number of Ribosomal protein genes to filter out: ",
+                   length(RPgenes)))
+      print(paste0("Number of selected genes after RP filter: ",
+                   length(selgenes)))
+    }
   }
   if (!keep_MALAT1) {
     selgenes <- selgenes[-which(selgenes=="MALAT1")]
+    if (verbose) {
+      print(paste0("Number of MALAT1 genes to filter out: 1"))
+      print(paste0("Number of selected genes after MALAT1 filter: ",
+                   length(selgenes)))
+    }
+  }
+  if (verbose) {
+    print(paste0("Total number of genes filtered out: ",
+                 length(rownames(so)) - length(selgenes)))
+    print(paste0("Final number of genes: ", length(selgenes)))
   }
   return(selgenes)
 }
