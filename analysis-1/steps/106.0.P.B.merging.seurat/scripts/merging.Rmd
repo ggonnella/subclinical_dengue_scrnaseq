@@ -1,25 +1,18 @@
 ---
-title: "InDen Project | B cells | Merging"
+title: "InDen B cells | Merging individual samples to a single Seurat object"
 author: "Giorgio Gonnella"
 date: 2024-04-29
 output: html_document
 params:
   pfx: "/srv/baia/"
+  libpath: "/home/giorgio/R-pkg-Seurat5/"
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(message=F, warning=F, comment = F, echo =T)
+knitr::opts_chunk$set(message=F, warning=F, echo=F)
+.libPaths(c(params$libpath, .libPaths()))
 
 library(Seurat)
-library(viridis)
-library(ggplot2)
-library(ggrepel)
-library(ggExtra)
-library(gplots)
-library(RColorBrewer)
-library(reshape2)
-library(ggsci)
-library(dplyr)
 
 prj_root <- paste0(params$pfx, "inden/")
 analysis_root <- paste0(prj_root, "analysis-1/")
@@ -27,8 +20,17 @@ analysis_root <- paste0(prj_root, "analysis-1/")
 # TODO: change this, integrating the steps before 006 to the analysis
 input_var_dir_prevanalysis1 <- paste0(prj_root, "data/bcells1/")
 input_var_dir_prevanalysis2 <- paste0(prj_root, "data/bcells2/")
+if (!dir.exists(input_var_dir_prevanalysis1)) {
+  stop("Input variable directory does not exist: ", input_var_dir_prevanalysis1)
+}
+if (!dir.exists(input_var_dir_prevanalysis2)) {
+  stop("Input variable directory does not exist: ", input_var_dir_prevanalysis2)
+}
 
 this_step_dir <- paste0(analysis_root, "steps/106.0.P.B.merging.seurat/")
+if (!dir.exists(this_step_dir)) {
+  stop("Current step directory does not exist: ", this_step_dir)
+}
 var_dir <- paste0(this_step_dir, "results/vars/")
 dir.create(var_dir, showWarnings = FALSE, recursive = TRUE)
 
@@ -83,9 +85,7 @@ The Seurat objects for the individual samples are merged
 into one Seurat object, using the `merge()` function.
 
 ```{r merging, echo=TRUE}
-so <- merge(x = bcells_ls[[1]],
-                           y = bcells_ls[-1],
-                           project = "so")
+so <- merge(x = bcells_ls[[1]], y = bcells_ls[-1], project = "so")
 rm(list = (c("bcells_ls")))
 ```
 
@@ -96,8 +96,7 @@ so$orig.ident[
       so$orig.ident == "sample_15_B_so"] <- "TC_SC03_S15B_so"
 so$orig.ident[
       so$orig.ident == "sample_16_B_so"] <- "TC_SC03_S16B_so"
-so$orig.ident <- factor(so$orig.ident,
-                                       levels = c("TC_SC03_S1B_so",
+so$orig.ident <- factor(so$orig.ident, levels = c("TC_SC03_S1B_so",
                                                   "TC_SC03_S5B_so",
                                                   "TC_SC03_S6B_so",
                                                   "TC_SC03_S7B_so",
@@ -108,12 +107,13 @@ so$orig.ident <- factor(so$orig.ident,
                                                   "TC_SC03_S13B_so",
                                                   "TC_SC03_S15B_so",
                                                   "TC_SC03_S16B_so"))
+so$sample <- sub(".*(S\\d+B).*", "\\1", so$orig.ident)
 ```
 
 Add clinical condition metadata.
 
 ```{r add_clinical_condition, echo=TRUE}
-conditions <- c("Hospitalized", "Mild")
+conditions <- c("Hospitalized", "Subclinical")
 hosp_n = c("1", "2", "3", "5", "6", "7", "15", "16")
 so$clinical_condition <-
   ifelse(so$orig.ident %in% paste0("TC_SC03_S", hosp_n, "B_so"),
@@ -129,20 +129,21 @@ so <- NormalizeData(object = so, assay = "RNA")
 ## Selection of highly variable genes
 
 ```{r hvg_selection, echo=TRUE}
-so <- FindVariableFeatures(object = so,
-                           assay = "RNA",
-                           nfeatures = 2500,
-                           selection.method = "vst")
+so <- FindVariableFeatures(object = so, assay = "RNA",
+                           nfeatures = 2500, selection.method = "vst")
 ```
 
 Removing unwanted source of variation in the highly variable genes
 
-```{r unwanted_genes, echo=TRUE}
+```{r genesets, echo=TRUE}
 so@misc$genesets$TCR <- grep(pattern = "^TR[AB][VC]", so@assays$RNA@var.features, value = TRUE)
 so@misc$genesets$IG <- c(grep(pattern = "^IG[HLK][VDJ]", so@assays$RNA@var.features, value = TRUE),
               c("IGHM", "IGHD", "IGHE", "IGHA[12]", "IGHG[1234]", "IGKC", "IGLC[1234567]", "AC233755.1"))
 so@misc$genesets$MT <- grep(pattern = "^MT", so@assays$RNA@var.features, value = TRUE)
 so@misc$genesets$Ribo <- grep(pattern = "^RP[LS]", so@assays$RNA@var.features, value = TRUE)
+```
+
+```{r unwanted_genes, echo=T}
 unwanted_genes <- c(so@misc$genesets$TCR,
                     so@misc$genesets$IG,
                     so@misc$genesets$MT,
@@ -168,26 +169,23 @@ so <- ScaleData(object = so,
 
 ```{r pca, echo=TRUE}
 so <- RunPCA(object = so, features = hvg_corr,
-                            npcs = 50, assay = "RNA")
+             npcs = 50, assay = "RNA")
 ```
 
 ## Non-linear dim reduction (UMAP)
 
 ```{r umap, echo=TRUE}
 myDims <- 1:40
-
 so <- RunUMAP(object = so, dims = myDims,
-                             reduction = "pca", reduction.name = "umap")
+              reduction = "pca", reduction.name = "umap")
 ```
 
 ## Clustering
 
 ```{r clustering, echo=TRUE}
 reS <- c(0.2, 0.4, 0.6, 0.8, 1.0, 1.2)
-
 so <- FindNeighbors(object = so, dims = myDims)
 so <- FindClusters(object = so, resolution = reS)
-
 so <- factor_resolution(so)
 ```
 
