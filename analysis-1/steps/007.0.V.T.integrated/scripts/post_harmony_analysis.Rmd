@@ -27,6 +27,19 @@ input_var_dir <- paste0(input_step_dir, "results/vars/")
 if (!dir.exists(input_var_dir)) {
   stop("Input variable directory does not exist: ", input_var_dir)
 }
+
+this_step_dir <- paste0(analysis_root, "steps/007.0.V.T.integrated/")
+if (!dir.exists(this_step_dir)) {
+  stop("Current step directory does not exist: ", this_step_dir)
+}
+
+plots_outdir <- paste0(this_step_dir, "results/plots/")
+dir.create(plots_outdir, recursive = T, showWarnings = F)
+tables_outdir <- paste0(this_step_dir, "results/tables/")
+dir.create(tables_outdir, recursive = T, showWarnings = F)
+
+helpers_dir <- paste0(prj_root, "helpers/")
+source(paste0(helpers_dir, "combined_proportion_plot.R"))
 ```
 
 ```{r load, echo = FALSE}
@@ -170,6 +183,36 @@ ggplot(celltype_df_fr, aes(x = sample_id, y = percentage))+
   theme_bw()+
   coord_flip()+
   scale_x_discrete(limits = rev(levels(celltype_df_fr$sample_id)))
+```
+
+### Proportion test
+
+```{r proportion_plot, fig.width=8, fig.height=8, echo=F}
+plt <- grouped_combined_permutation_test_plot(so, so@misc$proptest,
+            "pruned.labels_singleR_fine.abbrev", "cell_group",
+            "clinical_condition", "Clinical Condition", so@misc$cond_cols,
+            so@misc$ctg_backcols)
+
+fname <- paste0(plots_outdir, "singleR_proportion_test.svg")
+ggsave(fname, plot = plt, device = "svg")
+plt
+```
+
+```{r prop_test_results, echo=F}
+cell_order <- c("Th17", "Th2", "Th1", "Th1/Th17",
+                "CD4+ Naive", "Tregs", "Tfh",
+                "CD4+ TEMRA", "CD8+ Naive", "CD8+ CM",
+                "CD8+ TEMRA", "CD8+ EM", "GD", "MAIT")
+
+results <- so@misc$proptest@results$permutation %>%
+  mutate(clusters =
+         factor(so@misc$proptest@results$permutation$clusters,
+                levels = cell_order)) %>%
+  arrange(clusters)
+write.table(results,
+            file = paste0(tables_outdir, "singleR_proportion_test.tsv"),
+            sep = "\t", row.names = F)
+knitr::kable(results)
 ```
 
 ### Single cell types
