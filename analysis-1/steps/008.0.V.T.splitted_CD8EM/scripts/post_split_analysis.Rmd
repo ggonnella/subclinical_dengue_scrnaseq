@@ -21,13 +21,20 @@ prj_root <- paste0(params$pfx, "inden/")
 analysis_root <- paste0(prj_root, "analysis-1/")
 
 input_step_dir <- paste0(analysis_root, "steps/008.0.P.T.split_CD8EM/")
-var_dir <- paste0(input_step_dir, "results/vars/")
+input_var_dir <- paste0(input_step_dir, "results/vars/")
+if (!dir.exists(input_var_dir)) {
+  stop("Input variable directory does not exist: ", input_var_dir)
+}
 
 this_step_dir <- paste0(analysis_root, "steps/008.0.V.T.splitted_CD8EM/")
+if (!dir.exists(this_step_dir)) {
+  stop("Current step directory does not exist: ", this_step_dir)
+}
+
 tables_outdir <- paste0(this_step_dir, "results/tables/")
 plots_outdir <- paste0(this_step_dir, "results/plots/")
-dir.create(tables_outdir, recursive = T)
-dir.create(plots_outdir, recursive = TRUE, showWarnings = FALSE)
+dir.create(tables_outdir, recursive = T, showWarnings = F)
+dir.create(plots_outdir, recursive = T, showWarnings = F)
 
 helpers_dir <- paste0(prj_root, "helpers/")
 source(paste0(helpers_dir, "combined_proportion_plot.R"))
@@ -35,10 +42,10 @@ source(paste0(helpers_dir, "dimplot_helpers.R"))
 ```
 
 ```{r load, echo = FALSE}
-so <- readRDS(paste0(var_dir, "splitted_CD8EM_so.rds"))
+so <- readRDS(paste0(input_var_dir, "splitted_CD8EM_so.rds"))
 ```
 
-```{r cond_subsets, echo=FALSE}
+```{r cond_subsets, echo=F}
 cond_subset <- list()
 for (cond in levels(so$clinical_condition)) {
   cond_subset[[cond]] <- subset(so,
