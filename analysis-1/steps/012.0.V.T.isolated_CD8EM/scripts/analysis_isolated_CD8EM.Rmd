@@ -1,5 +1,5 @@
 ---
-title: "InDen Project | T cells | Isolate Effector Memory CD8+ cells"
+title: "InDen T cells | Analysis of isolated CD8+ EM cells"
 author: "Giorgio Gonnella"
 date: 2024-05-21
 output:
@@ -15,17 +15,6 @@ knitr::opts_chunk$set(message=F, warning=F, echo=T)
 .libPaths(c(params$libpath, .libPaths()))
 
 library(Seurat)
-#library(viridis)
-#library(ggplot2)
-#library(ggrepel)
-#library(ggExtra)
-#library(gplots)
-#library(RColorBrewer)
-#library(reshape2)
-#library(ggsci)
-#library(dplyr)
-#library(harmony)
-#library(clusterProfiler)
 library(scProportionTest)
 
 prj_root <- paste0(params$pfx, "inden/")
@@ -33,8 +22,15 @@ analysis_root <- paste0(prj_root, "analysis-1/")
 
 input_step_dir <- paste0(analysis_root, "steps/012.0.P.T.isolate_CD8EM/")
 input_var_dir <- paste0(input_step_dir, "results/vars/")
+if (!dir.exists(input_var_dir)) {
+  stop("Input variable directory does not exist: ", input_var_dir)
+}
 
 this_step_dir <- paste0(analysis_root, "steps/012.0.V.T.isolated_CD8EM/")
+if (!dir.exists(this_step_dir)) {
+  stop("Current step directory does not exist: ", this_step_dir)
+}
+
 plots_dir <- paste0(this_step_dir, "results/plots/")
 dir.create(plots_dir, showWarnings = FALSE, recursive = TRUE)
 tables_dir <- paste0(this_step_dir, "results/tables/")
@@ -120,12 +116,8 @@ FeaturePlot(EM_cells, features = "MKI67",reduction = "umapharm",
 
 # Cell types proportions
 
-```{r}
-prop_test <- EM_cells@misc$prop_test
-```
-
 ```{r, fig.width=6, fig.height=3}
-plt <- permutation_plot(prop_test)
+plt <- permutation_plot(EM_cells@misc$prop_test)
 fname <- paste0(plots_dir, "isolated_CD8EM.celltype_proportions.svg")
 ggsave(filename = fname, plot = plt, device = "svg", width=12, height=6)
 plt
