@@ -408,65 +408,6 @@ vgm$GEX@misc$clonotype_size_bin_cols <-
 saveRDS(vgm, paste0(var_dir, "vgm.rds"))
 ```
 
-## Filter cells wo VJ
-
-Now filter also the cells without VJ and save them as a separate object
-
-```{r filter_unavailable_vj}
-vgm_HL <- vgm_filter_unavailable_vj(vgm)
-```
-
-```{r cmp_n_cells_after_filter_unavail_VJ}
-gex_data <- data.frame(sample = factor(vgm_HL[["GEX"]]$sample), library = "GEX",
-                       celltype = factor(vgm_HL[["GEX"]]$celltype.abbrev))
-vdj_data <- data.frame(sample = factor(vgm_HL[["VDJ"]]$sample), library = "VDJ",
-                       celltype = factor(vgm_HL[["VDJ"]]$celltype.abbrev))
-combined_data <- bind_rows(gex_data, vdj_data)
-combined_plot <- ggplot(combined_data, aes(x = library, y = ..count.., fill=celltype)) +
-  geom_bar(stat = "count") +
-  facet_wrap(~sample,nrow=1)+
-  xlab("Sample") + ylab("N.cells") +
-  ggtitle("Number of cells") +
-  theme(legend.position = "bottom") +
-  scale_fill_manual(values = vgm_HL[["GEX"]]@misc$fctype_mod_cols)
-print(combined_plot)
-ggsave(paste0(plots_dir, "after_filter_unavail_VJ.n_cells_per_sample.pdf"), combined_plot)
-```
-
-### Table GEX/VDJ available after filtering unavailable VJ chains
-
-```{r n_unavailable_after_filter_unavailable_vj}
-print("VDJ available for cells in GEX dataset:")
-table(vgm_HL[["GEX"]]$VDJ_available)
-
-print("VDJ available for cells in GEX dataset, by sample:")
-table(vgm_HL[["GEX"]]$sample, vgm_HL[["GEX"]]$VDJ_available)
-
-print("VDJ available for cells in GEX dataset, by celltype:")
-vgm_HL[["GEX"]]$celltype <- droplevels(vgm_HL[["GEX"]]$celltype)
-vgm_HL[["GEX"]]$celltype.abbrev <- droplevels(vgm_HL[["GEX"]]$celltype.abbrev)
-table(vgm_HL[["GEX"]]$celltype.abbrev, vgm_HL[["GEX"]]$VDJ_available)
-
-print("VDJ available for cells in GEX dataset, by cluster:")
-table(vgm_HL[["GEX"]]$seurat_clusters, vgm_HL[["GEX"]]$VDJ_available)
-```
-
-## Clonotypes
-
-Recompute for each cell the size of the clonotype to which it belongs.
-Group into bins for plotting.
-
-```{r clonotype_size_vgm_HL}
-vgm_HL <- cells_clonotype_size(vgm_HL)
-vgm_HL <- compute_clonotype_size_bins(vgm_HL)
-```
-
-## Save
-
-```{r saving_vgm_HL}
-saveRDS(vgm_HL, paste0(var_dir, "vgm_HL.rds"))
-```
-
 ## Session Info
 
 ```{r session_info, echo=FALSE}
