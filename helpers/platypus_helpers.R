@@ -567,7 +567,7 @@ VDJ_overlap_sorted_heatmap <- function(VDJ, feature.columns, grouping.column,
     return(list(plot_out, combs))
 }
 
-most_freq_cd3s_aa_plot <- function(vdj, use.VJ = FALSE, group_col =
+most_freq_cdr3s_aa_plot <- function(vdj, use.VJ = FALSE, group_col =
                                    "clinical_condition", color_by = "sample",
                                    cols = colorRampPalette(brewer.pal(9,
                                      "Set1"))(length(unique(vdj[[color_by]]))),

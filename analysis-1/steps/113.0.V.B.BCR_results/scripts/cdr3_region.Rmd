@@ -229,10 +229,12 @@ plt <- ggplot(data_relative, aes(x=seqlength, y=relative_count,
 print(plt)
 ```
 
-# Most frequent CDR3 sequences
+# Most frequent CDR3 aa sequences
+
+## Colored by celltype
 
 ```{r most_freq_CDR3s_vdj}
-tab_plt <- most_freq_cd3s_aa_plot(vgm[["VDJ"]], color_by = "celltype",
+tab_plt <- most_freq_cdr3s_aa_plot(vgm[["VDJ"]], color_by = "celltype",
                                   cols = vgm$GEX@misc$fctype_mod_cols,
                               color_lbl = "Cell type",
                               group_col = "clinical_condition")
@@ -242,13 +244,110 @@ tab_plt$plot
 ```
 
 ```{r most_freq_CDR3s_vj}
-tab_plt <- most_freq_cd3s_aa_plot(vgm_HL[["VDJ"]], color_by = "celltype",
+tab_plt <- most_freq_cdr3s_aa_plot(vgm_HL[["VDJ"]], color_by = "celltype",
                                   cols = vgm$GEX@misc$fctype_mod_cols,
                               color_lbl = "Cell type",
                               group_col = "clinical_condition",
                               use.VJ = TRUE)
 filename <- paste0(plots_dir, "most_freq_CDR3s_aa.vj.pdf")
 ggsave(filename, tab_plt$plot, width = 10, height = 5)
+```
+
+## Colored by sample ID
+
+```{r}
+most_freq <- most_freq_cdr3s_aa_plot(vgm$VDJ, color_lbl = "Sample ID",
+                                    cols = vgm$GEX@misc$sample_cols)
+fname <- paste0(plots_dir, "B.most_freq_clonotypes.VDJ.by_sample.svg")
+ggsave(fname, most_freq$plot, device = "svg", width=3, height=2.6, scale=1.5)
+print(most_freq$plot)
+
+# common sequences
+aaS <- most_freq$cdr3_usage_top[
+          most_freq$cdr3_usage_top$clinical_condition ==
+            "Subclinical", ]$VDJ_cdr3s_aa
+aaH <- most_freq$cdr3_usage_top[
+          most_freq$cdr3_usage_top$clinical_condition ==
+            "Hospitalized", ]$VDJ_cdr3s_aa
+intersection = intersect(aaS, aaH)
+print(paste0("Common sequences between most frequent ",
+             "Subclinical and Hospitalized (", length(intersection), ")"))
+if (length(intersection) > 0) { print(intersection)}
+
+for (celltype in unique(vgm[["VDJ"]]$celltype.abbrev)) {
+  most_freq <- most_freq_cdr3s_aa_plot(vgm$VDJ, color_lbl = "Sample",
+        sel_celltype = celltype, celltype_col = "celltype.abbrev",
+        color_by = "sample_name", cols = vgm$GEX@misc$sample_name_cols,
+        title="", group_col = "clinical_condition",
+        short_title=T)
+  most_freq$plot <- most_freq$plot +
+    theme(axis.line = element_line(colour = "black"),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          panel.border = element_blank(),
+          panel.background = element_blank())
+
+  celltype_sanitized <- gsub("[^[:alnum:]]", "_", celltype)
+  fname <- paste0(plots_dir, "B.most_freq_clonotypes.VDJ.by_sample.",
+                  celltype_sanitized, ".svg")
+  ggsave(fname, most_freq$plot, device = "svg",
+         width=4.5, height=2.6, scale=1.5)
+  print(most_freq$plot)
+}
+```
+
+# Shared CD3s sequences
+
+```{r}
+vj_cdr3s_aa_oh <- VDJ_overlap_sorted_heatmap(vgm_HL$VDJ, c("VJ_cdr3s_aa"),
+                                             grouping.column = "sample_name",
+                                             group.by = "clinical_condition",
+                                             axis.label.size = 12,
+                                             pvalues.label.size = 6)
+plt <- vj_cdr3s_aa_oh[[1]]
+fname <- paste0(plots_dir, "VJ_cdr3s_aa.overlap.svg")
+ggsave(fname, plt)
+print(plt)
+```
+
+```{r}
+vdj_cdr3s_aa_oh <- VDJ_overlap_sorted_heatmap(vgm_HL$VDJ, c("VDJ_cdr3s_aa"),
+                                              grouping.column = "sample_name",
+                                              group.by = "clinical_condition",
+                                              axis.label.size = 12,
+                                              pvalues.label.size = 6)
+plt <- vdj_cdr3s_aa_oh[[1]]
+fname <- paste0(plots_dir, "VDJ_cdr3s_aa.overlap.svg")
+ggsave(fname, plt)
+print(plt)
+```
+
+```{r}
+vdj_vj_cdr3s_aa_oh <- VDJ_overlap_sorted_heatmap(vgm_HL$VDJ,
+                                          c("VDJ_cdr3s_aa", "VJ_cdr3s_aa"),
+                                          grouping.column = "sample_name",
+                                          group.by = "clinical_condition",
+                                          axis.label.size = 12,
+                                          pvalues.label.size = 6)
+plt <- vdj_vj_cdr3s_aa_oh[[1]]
+fname <- paste0(plots_dir, "VDJ_VJ_cdr3s_aa.overlap.svg")
+ggsave(fname, plt)
+print(plt)
+```
+
+## Shared sequence
+
+```{r}
+# more information on the only shared sequence
+shared <- vdj_vj_cdr3s_aa_oh[[2]][25,]
+cdr3s <- str_split(shared$items.overlapping, '/')
+vdj_cdr3s <- cdr3s[[1]][[1]]
+vj_cdr3s <- cdr3s[[1]][[2]]
+shared_vdj <- subset(vgm_HL$VDJ, VDJ_cdr3s_aa == vdj_cdr3s)
+shared_both <- subset(shared_vdj, VJ_cdr3s_aa == vj_cdr3s)
+print(vdj_cdr3s)
+print(vj_cdr3s)
+print(table(shared_both$celltype, shared_both$sample_name))
 ```
 
 # Session info
