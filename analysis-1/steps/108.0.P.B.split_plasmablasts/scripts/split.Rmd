@@ -1,5 +1,5 @@
 ---
-title: "InDen Project | B cells | Split Plasmablasts"
+title: "InDen B cells | Split Plasmablasts"
 author: "Giorgio Gonnella"
 date: 2024-06-27
 output:
@@ -7,42 +7,37 @@ output:
     theme: sandstone
 params:
   pfx: "/srv/baia/"
+  libpath: "/home/giorgio/R-pkg-Seurat5/"
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(message = FALSE, warning = FALSE, comment = FALSE, echo = TRUE)
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(message=F, warning=F, echo=T)
+.libPaths(c(params$libpath, .libPaths()))
 
-# required libraries
 library(Seurat)
-library(viridis)
-library(ggplot2)
-library(ggrepel)
-library(ggExtra)
-library(gplots)
-library(RColorBrewer)
-library(reshape2)
-library(ggsci)
-library(dplyr)
-library(harmony)
+library(scProportionTest)
 
 prj_root <- paste0(params$pfx, "inden/")
 analysis_root <- paste0(prj_root, "analysis-1/")
 
 prev_step_dir <- paste0(analysis_root, "steps/107.0.P.B.integration.harmony/")
 input_var_dir <- paste0(prev_step_dir, "results/vars/")
+if (!dir.exists(input_var_dir)) {
+  stop("Input variable directory does not exist: ", input_var_dir)
+}
 
 this_step_dir <- paste0(analysis_root, "steps/108.0.P.B.split_plasmablasts/")
+if (!dir.exists(this_step_dir)) {
+  stop("Current step directory does not exist: ", this_step_dir)
+}
 var_dir <- paste0(this_step_dir, "results/vars/")
 dir.create(var_dir, showWarnings = FALSE, recursive = TRUE)
 
 ```
 
 ```{r load, include = FALSE}
-# importing already processed merged object
 so <- readRDS(file = paste0(input_var_dir, "integrated_so.rds"))
-
 ```
-
 
 The purpose of this step is to divide the plasmablasts according to
 their unsupervised clustering. The cluster 6 cells will be separated
@@ -71,20 +66,6 @@ so$pruned.labels_singleR_fine.mod <-
          as.character(so$pruned.labels_singleR_fine))
 ```
 
-Alternative splitting, by Phase (G2M, S, G1)
-stored in a different slot
-
-```{r split_by_phase, echo=TRUE}
-so$pruned.labels_singleR_fine.mod_by_phase <- so$pruned.labels_singleR_fine
-so$pruned.labels_singleR_fine.mod_by_phase <-
-  ifelse(so$pruned.labels_singleR_fine ==
-         "Plasmablasts",
-         ifelse(so$Phase %in% c("G2M", "S"),
-                "Proliferating plasmablasts",
-                "Non-proliferating plasmablasts"),
-         as.character(so$pruned.labels_singleR_fine))
-```
-
 # After splitting
 
 ```{r after}
@@ -93,6 +74,10 @@ table(so$pruned.labels_singleR_fine.mod)
 
 # Post-processing
 
+Repeat the steps of Harmony post-processing (group cell types, abbreviate
+labels, create color schemes), adding the two additional cell types derived
+from splitting.
+
 ## Sort fine celltype labels
 
 ```{r fctype_sort, echo=TRUE}
@@ -100,8 +85,6 @@ order <- c("Naive B cells", "Non-switched memory B cells", "Switched memory B ce
     "Non-proliferating plasmablasts", "Proliferating plasmablasts", "Exhausted B cells")
 so$pruned.labels_singleR_fine.mod <-
   factor(so$pruned.labels_singleR_fine.mod, levels = order)
-so$pruned.labels_singleR_fine.mod_by_phase <-
-  factor(so$pruned.labels_singleR_fine.mod_by_phase, levels = order)
 ```
 
 ## Abbreviated labels
@@ -122,8 +105,18 @@ so$pruned.labels_singleR_fine.mod.abbrev <- factor(
 ```{r color_scheme_for_fine_labels}
 so@misc$fctype_mod_cols <-
   c(so@misc$fctype_cols,
-   "Proliferating plasmablasts" = "#ffa9ff",  # Light Pink
-   "Non-proliferating plasmablasts" = "#ac2355")  # Dark Pink
+   "Proliferating plasmablasts" = "#46531a",
+   "Non-proliferating plasmablasts" = "#238b45")
+```
+
+## Cell proportions permutations test
+
+```{r cell_proportions_permutation_test, echo=TRUE}
+so@misc$proptest_mod <- permutation_test(sc_utils(so),
+                cluster_identity = "pruned.labels_singleR_fine.mod.abbrev",
+                sample_1 = "Subclinical", sample_2 = "Hospitalized",
+                sample_identity = "clinical_condition",
+                n_permutations = 1000)
 ```
 
 ## Saving data
