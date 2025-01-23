@@ -1,0 +1,129 @@
+---
+title: "InDen B cells | Gene differential expression dot plots"
+author: "Giorgio Gonnella"
+date: 2024-08-29
+output:
+  html_document:
+    theme: sandstone
+params:
+  pfx: "/srv/baia/"
+  libpath: "/home/giorgio/R-pkg-Seurat5/"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message=F, warning=F, echo=F)
+.libPaths(c(params$libpath, .libPaths()))
+
+library(Seurat)
+library(dplyr)
+
+prj_root <- paste0(params$pfx, "inden/")
+analysis_root <- paste0(prj_root, "analysis-1/")
+
+input_step_dir <- paste0(analysis_root, "steps/110.0.P.B.de_analysis/")
+input_var_dir <- paste0(input_step_dir, "results/vars/")
+if (!dir.exists(input_var_dir)) {
+  stop("Input variable directory does not exist: ", input_var_dir)
+}
+
+this_step_dir <- paste0(analysis_root, "steps/110.0.V.B.de_results/")
+if (!dir.exists(this_step_dir)) {
+  stop("Current step directory does not exist: ", this_step_dir)
+}
+plots_outdir <- paste0(this_step_dir, "results/plots/dotplots/")
+dir.create(plots_outdir, recursive = T, showWarnings = F)
+
+helpers_dir <- paste0(prj_root, "helpers/")
+source(paste0(helpers_dir, "de_helpers.R"))
+```
+
+```{r load_data, echo=FALSE}
+so <- readRDS(file = paste0(input_var_dir, "so_w_deseq.rds"))
+```
+
+```{r de_genes}
+celltypes <- setdiff(names(so@misc$de$pval_filt), "Total")
+de <- list()
+for (celltype in celltypes) {
+  ct_results = so@misc$de$pval_filt[[celltype]] 
+  if (nrow(ct_results) > 0) {
+    de[[celltype]] <- rownames(ct_results)
+  }
+}
+all_de <- unique(Reduce(c, de))
+```
+
+```{r compute_max_expression}
+range <- max_expression(so, all_de, "pruned.labels_singleR_fine.mod")
+max_expr <- range$max_expr
+```
+
+# Dot plots using DE genes for the cell type
+
+```{r dot_plots_de_genes, fig.height=8, fig.width=8}
+for (celltype in unique(so$pruned.labels_singleR_fine.mod)) {
+  if (!(celltype %in% names(de))) {
+    next
+  }
+  celltype_sanitized <- gsub(" ", "_", celltype)
+  celltype_sanitized <- gsub("/", "_", celltype_sanitized)
+  ct_sub <- subset(so, pruned.labels_singleR_fine.mod == celltype)
+
+  plot <- GEX_dotplot(ct_sub, "clinical_condition", de[[celltype]],
+                       max_expr = max_expr, title = celltype)
+  print(plot)
+  fname <- paste0(plots_outdir, "B.de_genes_dotplot.", celltype_sanitized, ".svg")
+  ggsave(fname, plot = plot, device = "svg")
+}
+```
+
+```{r dot_plots_de_genes_unsplitted, fig.height=8, fig.width=8}
+celltype = "Plasmablasts"
+celltype_sanitized <- gsub(" ", "_", celltype)
+celltype_sanitized <- gsub("/", "_", celltype_sanitized)
+ct_sub <- subset(so, pruned.labels_singleR_fine == celltype)
+
+plot <- GEX_dotplot(ct_sub, "clinical_condition", de[[celltype]],
+                    max_expr = max_expr, title = celltype)
+print(plot)
+fname <- paste0(plots_outdir, "B.de_genes_dotplot.", celltype_sanitized, ".svg")
+ggsave(fname, plot = plot, device = "svg")
+```
+
+# Dot plots using all DE genes for any cell type
+
+```{r dot_plots_all_de_genes, fig.height=8, fig.width=8}
+for (celltype in unique(so$pruned.labels_singleR_fine.mod)) {
+  if (!(celltype %in% names(de))) {
+    next
+  }
+  celltype_sanitized <- gsub(" ", "_", celltype)
+  celltype_sanitized <- gsub("/", "_", celltype_sanitized)
+  ct_sub <- subset(so, pruned.labels_singleR_fine.mod == celltype)
+
+  plot <- GEX_dotplot(ct_sub, "clinical_condition", all_de,
+                       max_expr = max_expr, title = celltype)
+  print(plot)
+  fname <- paste0(plots_outdir, "B.all_de_genes_dotplot.", celltype_sanitized, ".svg")
+  ggsave(fname, plot = plot, device = "svg")
+}
+```
+
+```{r dot_plots_all_de_genes_unsplitted_EM, fig.height=8, fig.width=8}
+celltype = "Plasmablasts"
+celltype_sanitized <- gsub(" ", "_", celltype)
+celltype_sanitized <- gsub("/", "_", celltype_sanitized)
+ct_sub <- subset(so, pruned.labels_singleR_fine == celltype)
+
+plot <- GEX_dotplot(ct_sub, "clinical_condition", all_de,
+                    max_expr = max_expr, title = celltype)
+print(plot)
+fname <- paste0(plots_outdir, "B.all_de_genes_dotplot.", celltype_sanitized, ".svg")
+ggsave(fname, plot = plot, device = "svg")
+```
+
+# Session info
+
+```{r session_info, echo=FALSE}
+sessionInfo()
+```
