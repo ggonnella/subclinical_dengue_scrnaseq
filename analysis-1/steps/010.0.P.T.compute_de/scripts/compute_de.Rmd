@@ -22,8 +22,15 @@ analysis_root <- paste0(prj_root, "analysis-1/")
 
 prev_step_dir <- paste0(analysis_root, "steps/008.0.P.T.split_CD8EM/")
 input_var_dir <- paste0(prev_step_dir, "results/vars/")
+if (!dir.exists(input_var_dir)) {
+  stop("Input variable directory does not exist: ", input_var_dir)
+}
 
 this_step_dir <- paste0(analysis_root, "steps/010.0.P.T.compute_de/")
+if (!dir.exists(this_step_dir)) {
+  stop("Current step directory does not exist: ", this_step_dir)
+}
+
 var_dir <- paste0(this_step_dir, "results/vars/")
 dir.create(var_dir, showWarnings = FALSE, recursive = TRUE)
 ```
