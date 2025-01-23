@@ -1,0 +1,91 @@
+---
+title: "InDen B cells | Create honeycomb plots"
+author: "Giorgio Gonnella"
+date: "2025-01-21"
+output:
+  html_document:
+    theme: sandstone
+params:
+  pfx: "/srv/baia/"
+  libpath: "/home/giorgio/R-pkg-Seurat5/"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message=F, warning=F, echo=T)
+.libPaths(c(params$libpath, .libPaths()))
+
+library(Platypus)
+
+prj_root <- paste0(params$pfx, "inden/")
+analysis_root <- paste0(prj_root, "analysis-1/")
+
+input_step_dir <- paste0(analysis_root, "steps/114.0.P.B.enclone_preparation/")
+input_json_dir <- paste0(input_step_dir, "results/json/")
+if (!dir.exists(input_json_dir)) {
+  stop("Input JSON directory does not exist: ", input_json_dir)
+}
+if (!file.exists(paste0(input_json_dir, "all_contig_annotations.json"))) {
+  stop("Input JSON file does not exist: ",
+       paste0(input_json_dir, "all_contig_annotations.json"))
+}
+input_tsvfile <- paste0(input_step_dir, "results/tables/vgm.tsv")
+if (!file.exists(input_tsvfile)) {
+  stop("Input TSV file does not exist: ", input_tsvfile)
+}
+
+this_step_dir <- paste0(analysis_root, "steps/114.0.V.B.enclone_plots/")
+if (!dir.exists(this_step_dir)) {
+  stop("Current step directory does not exist: ", this_step_dir)
+}
+plots_dir <- paste0(this_step_dir, "results/plots/")
+dir.create(plots_dir, showWarnings = FALSE, recursive = TRUE)
+```
+
+# Metadata
+
+```{r}
+vgm_data <- read.delim(input_tsvfile, header=T, stringsAsFactors=F)
+celltypes <- unique(vgm_data$celltype)
+conditions <- unique(vgm_data$condition)
+```
+
+# Compose change colors command
+
+```{r}
+change_colors_cmd <-
+  paste0("sed -e 's/rgb(0,110,130)/#3d58a7/g' ",
+         "-e 's/rgb(130,20,160)/#f23325/g' ",
+         "-e 's/rgb(0,90,200)/#76c161/g' ",
+         "-e 's/rgb(0,160,250)/#e78ac3/g' ",
+         "-e 's/rgb(250,120,250)/#9553a1/g' ",
+         "-e 's/rgb(20,210,220)/#f7911e/g' ",
+         "-e 's/rgb(170,10,60)/#010202/g' ",
+         "-e 's/rgb(10,155,75)/#8da0cb/g' ",
+         "-e 's/rgb(255,130,95)/#942e28/g' ",
+         "-e 's/rgb(0,0,0)/#7f7f7f/g' ",
+         "-i ")
+```
+
+# Run enclone
+
+```{r}
+system(paste0("ln -s -f ", input_json_dir, " ", "json"))
+for (celltype in celltypes) {
+  celltype_sanitized <- gsub("[^0-9a-zA-Z]", "_", celltype)
+  for (condition in conditions) {
+    outfname <- paste0(plots_dir, celltype_sanitized, ".", condition, ".svg")
+    system(paste0("enclone ", "BCR=json PLOT_BY_ISOTYPE=", outfname,
+                  " NOPRINT MIN_CELLS=1 BC=", input_tsvfile,
+                  " KEEP_CELL_IF=\"celltype == '", celltype,
+                  "' && condition == '", condition, "'\""))
+    system(paste0(change_colors_cmd, outfname))
+  }
+}
+system("rm -f json")
+```
+
+# Session info
+
+```{r}
+sessionInfo()
+```
