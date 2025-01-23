@@ -238,7 +238,6 @@ for (celltype in unique(vgm[["VDJ"]]$celltype.abbrev)) {
 ```
 
 ```{r, fig.height=16, fig.width=8}
-vgm <- transfer_gex_to_vdj(vgm, "pruned.labels_singleR_fine.abbrev")
 for (celltype in c("CD8+ EM")) {
   plt <- cmp_clonotype_size_plot(vgm, relative=T,
                                ident="pruned.labels_singleR_fine.abbrev",
@@ -452,6 +451,26 @@ for (celltype in unique(vgm[["VDJ"]]$celltype.abbrev)) {
          width=4.5, height=2.6, scale=1.5)
   print(most_freq$plot)
 }
+```
+
+```{r m_freq_cdr3aa_cd8_em_sample_cols}
+most_freq <- most_freq_cd3s_aa_plot(vgm$VDJ, color_lbl = "Sample",
+      sel_celltype = "CD8+ EM",
+      celltype_col = "pruned.labels_singleR_fine.abbrev",
+      color_by = "sample_name", cols = vgm$GEX@misc$sample_name_cols,
+      title="", group_col = "clinical_condition",
+      short_title=T)
+most_freq$plot <- most_freq$plot +
+  theme(axis.line = element_line(colour = "black"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank())
+
+fname <- paste0(plots_dir, "T.most_freq_clonotypes.VDJ.by_sample.CD8__EM.svg")
+ggsave(fname, most_freq$plot, device = "svg",
+       width=4.5, height=2.6, scale=1.5)
+print(most_freq$plot)
 ```
 
 # Session info
