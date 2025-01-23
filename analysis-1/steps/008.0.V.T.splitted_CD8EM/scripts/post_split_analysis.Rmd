@@ -233,22 +233,6 @@ for (cond in levels(so$clinical_condition)) {
 ### Proportion test
 
 ```{r proportion_plot, fig.width=8, fig.height=8, echo=F}
-so$cell_group <- NA
-for (group in names(so@misc$fctype_group)) {
-  so$cell_group <-
-    ifelse(so$pruned.labels_singleR_fine %in%
-           so@misc$fctype_group[[group]],
-           group, so$cell_group)
-}
-
-so@misc$proptest_mod@meta_data$cell_group <- NA
-for (group in names(so@misc$fctype_group)) {
-  so@misc$proptest_mod@meta_data$cell_group <-
-    ifelse(so@misc$proptest_mod@meta_data$pruned.labels_singleR_fine %in%
-           so@misc$fctype_group[[group]],
-           group, so@misc$proptest_mod@meta_data$cell_group)
-}
-
 plt <- grouped_combined_permutation_test_plot(so, so@misc$proptest_mod,
             "pruned.labels_singleR_fine.mod.abbrev", "cell_group",
             "clinical_condition", "Clinical Condition", so@misc$cond_cols,
@@ -357,12 +341,15 @@ ggsave(fname, plot = plt, device = "svg")
 
 ```{r single_cell_types_umap, fig.width=12, fig.height=6, echo=F}
 for (celltype in unique(so$pruned.labels_singleR_fine.mod)) {
-  highl <- WhichCells(so,
-                      expression = pruned.labels_singleR_fine.mod == celltype)
-  print(DimPlot(so, reduction = "umapharm",
-          cells.highlight = highl, cols.highlight = "darkblue",
+  hl <- WhichCells(so, expression = pruned.labels_singleR_fine.mod == celltype)
+  plt <- DimPlot(so, reduction = "umapharm",
+          cells.highlight = hl, cols.highlight = "darkblue",
           split.by = "clinical_condition", cols = "grey") + ggtitle(celltype) +
-        theme(legend.position = "none"))
+        theme(legend.position = "none")
+  celltype_sanitized <- gsub("[^[:alnum:]]", "_", celltype)
+  fname <- paste0(plots_outdir, "umap.by_cond.", celltype_sanitized, ".svg")
+  ggsave(fname, plot = plt, device = "svg")
+  print(plt)
 }
 ```
 
