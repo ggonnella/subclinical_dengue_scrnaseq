@@ -23,11 +23,14 @@ prj_root <- paste0(params$pfx, "inden/")
 analysis_root <- paste0(prj_root, "analysis-1/")
 
 input_step_dir <- paste0(analysis_root, "steps/006.0.P.T.merging.seurat/")
-var_dir <- paste0(input_step_dir, "results/vars/")
+input_var_dir <- paste0(input_step_dir, "results/vars/")
+if (!dir.exists(input_var_dir)) {
+  stop("Input variable directory does not exist: ", input_var_dir)
+}
 ```
 
 ```{r load_data, echo=F}
-so <- readRDS(paste0(var_dir, "merged_so.rds"))
+so <- readRDS(paste0(input_var_dir, "merged_so.rds"))
 sample_cols <- colorRampPalette(brewer.pal(8, name = "Accent"))(
                   length(unique(so$orig.ident)))
 ```

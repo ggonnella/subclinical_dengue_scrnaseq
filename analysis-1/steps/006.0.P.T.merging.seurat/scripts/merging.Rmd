@@ -18,9 +18,16 @@ prj_root <- paste0(params$pfx, "inden/")
 analysis_root <- paste0(prj_root, "analysis-1/")
 
 # TODO: change this, integrating the steps before 006 to the analysis
-input_var_dir_prevanalysis <- paste0(prj_root, "data/tcells/")
+input_var_dir <- paste0(prj_root, "data/tcells/")
+if (!dir.exists(input_var_dir)) {
+  stop("Input variable directory does not exist: ", input_var_dir)
+}
 
 this_step_dir <- paste0(analysis_root, "steps/006.0.P.T.merging.seurat/")
+if (!dir.exists(this_step_dir)) {
+  stop("Current step directory does not exist: ", this_step_dir)
+}
+
 var_dir <- paste0(this_step_dir, "results/vars/")
 dir.create(var_dir, showWarnings = FALSE, recursive = TRUE)
 
@@ -38,10 +45,10 @@ object.
 The files are imported as a list of Seurat objects.
 
 ```{r importing, echo=T}
-tcells_files <- list.files(path = input_var_dir_prevanalysis,
+tcells_files <- list.files(path = input_var_dir,
                            pattern = "_filt.Rdata")
 tcells_ls <- sapply(tcells_files, function(x)
-                      mget(load(paste0(input_var_dir_prevanalysis, x))))
+                      mget(load(paste0(input_var_dir, x))))
 names(tcells_ls) <- gsub(".Rdata", "", tcells_files)
 rm(tcells_files)
 ```
