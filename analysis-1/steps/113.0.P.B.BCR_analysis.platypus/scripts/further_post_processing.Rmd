@@ -54,14 +54,14 @@ vgm_HL <- readRDS(file = paste0(input_var_dir, "vgm.rds"))
 We filter here the cells without VJ and save them as a separate object vgm\_HL.
 
 ```{r filter_unavailable_vj}
-vgm_HL <- vgm_filter_unavailable_vj(vgm)
+vgm_HL <- vgm_filter_unavailable_vj(vgm_HL)
 ```
 
 ```{r cmp_n_cells_after_filter_unavail_VJ}
 gex_data <- data.frame(sample = factor(vgm_HL[["GEX"]]$sample), library = "GEX",
-                       celltype = factor(vgm_HL[["GEX"]]$celltype.abbrev))
+                       celltype = factor(vgm_HL[["GEX"]]$celltype))
 vdj_data <- data.frame(sample = factor(vgm_HL[["VDJ"]]$sample), library = "VDJ",
-                       celltype = factor(vgm_HL[["VDJ"]]$celltype.abbrev))
+                       celltype = factor(vgm_HL[["VDJ"]]$celltype))
 combined_data <- bind_rows(gex_data, vdj_data)
 combined_plot <- ggplot(combined_data,
   aes(x = library, y = ..count.., fill=celltype)) +
@@ -88,7 +88,7 @@ table(vgm_HL[["GEX"]]$sample, vgm_HL[["GEX"]]$VDJ_available)
 print("VDJ available for cells in GEX dataset, by celltype:")
 vgm_HL[["GEX"]]$celltype <- droplevels(vgm_HL[["GEX"]]$celltype)
 vgm_HL[["GEX"]]$celltype.abbrev <- droplevels(vgm_HL[["GEX"]]$celltype.abbrev)
-table(vgm_HL[["GEX"]]$celltype.abbrev, vgm_HL[["GEX"]]$VDJ_available)
+table(vgm_HL[["GEX"]]$celltype, vgm_HL[["GEX"]]$VDJ_available)
 
 print("VDJ available for cells in GEX dataset, by cluster:")
 table(vgm_HL[["GEX"]]$seurat_clusters, vgm_HL[["GEX"]]$VDJ_available)
@@ -111,13 +111,13 @@ all_data_results <- gene_usage_signif(vgm_HL$VDJ, genesets = c("VH_VL_pairing"))
 ```
 
 ```{r gene_usage_analysis_cell_types, message=T}
-cell_types <- unique(vgm_HL$VDJ$pruned.labels_singleR_fine.mod.abbrev)
+cell_types <- unique(vgm_HL$VDJ$pruned.labels_singleR_fine.mod)
 cell_type_results <- data.frame()
 for (ct in cell_types) {
   message("Computing gene usage for cell type: ", ct)
   results <-
     gene_usage_signif(vgm_HL$VDJ, celltype = ct,
-                      celltype_column = "pruned.labels_singleR_fine.mod.abbrev",
+                      celltype_column = "pruned.labels_singleR_fine.mod",
                       genesets = c("VH_VL_pairing"))
   if (!is.null(results) && nrow(results) > 0) {
     cell_type_results <- rbind(cell_type_results, results)
@@ -129,7 +129,7 @@ for (ct in cell_types) {
 unsplitted_results <-
   gene_usage_signif(vgm_HL$VDJ,
                     celltype = "Plasmablasts",
-                    celltype_column = "pruned.labels_singleR_fine.abbrev",
+                    celltype_column = "pruned.labels_singleR_fine",
                     genesets = c("VH_VL_pairing"))
 ```
 
@@ -140,6 +140,22 @@ vgm_HL$GEX@misc$gene_pairings$all <- rbind(all_data_results,
 vgm_HL$GEX@misc$gene_pairings$p_filt <-
   vgm_HL$GEX@misc$gene_pairings$all[
     vgm_HL$GEX@misc$gene_pairings$all$p_adj < 0.05,]
+```
+
+#### Gene usage analysis hospitalized plasmablasts
+
+```{r}
+plasmablasts <- subset(vgm_HL$VDJ,
+                       celltype %in% c("Proliferating plasmablasts",
+                                       "Non-proliferating plasmablasts"))
+plasmablasts$celltype = droplevels(plasmablasts$celltype)
+results <- gene_usage_signif(plasmablasts, celltype = "Hospitalized",
+                             celltype_column = "clinical_condition",
+                             group_column = "celltype", n_permutations = 1000)
+signif_results <- results[results$p_adj < 0.05, ]
+
+vgm_HL$GEX@misc$gene_pairings$hpb_all <- results
+vgm_HL$GEX@misc$gene_pairings$hpb_p_filt <- signif_results
 ```
 
 ## Save
