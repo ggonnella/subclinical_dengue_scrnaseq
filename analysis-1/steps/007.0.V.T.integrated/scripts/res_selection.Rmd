@@ -27,11 +27,14 @@ prj_root <- paste0(params$pfx, "inden/")
 analysis_root <- paste0(prj_root, "analysis-1/")
 
 input_step_dir <- paste0(analysis_root, "steps/007.0.P.T.integration.harmony/")
-var_dir <- paste0(input_step_dir, "results/vars/")
+input_var_dir <- paste0(input_step_dir, "results/vars/")
+if (!dir.exists(input_var_dir)) {
+  stop("Input variable directory does not exist: ", input_var_dir)
+}
 ```
 
 ```{r load, echo=F}
-so <- readRDS(paste0(var_dir, "integrated_so.rds"))
+so <- readRDS(paste0(input_var_dir, "integrated_so.rds"))
 ```
 
 ```{r clusters_palette}

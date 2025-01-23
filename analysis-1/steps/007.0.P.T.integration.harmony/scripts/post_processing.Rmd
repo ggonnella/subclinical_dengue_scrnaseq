@@ -22,6 +22,10 @@ prj_root <- paste0(params$pfx, "inden/")
 analysis_root <- paste0(prj_root, "analysis-1/")
 
 this_step_dir <- paste0(analysis_root, "steps/007.0.P.T.integration.harmony/")
+if (!dir.exists(this_step_dir)) {
+  stop("Current step directory does not exist: ", this_step_dir)
+}
+
 var_dir <- paste0(this_step_dir, "results/vars/")
 ```
 
@@ -35,12 +39,29 @@ Create simpler sample IDs, saved under the `sample` column
 (e.g. `TC_SC03_S1T_so` -> `S1T`). Sample will be a factor.
 
 ```{r create_sample_column, echo=T}
-so$sample <- sub("TC_SC03_(S\\d+T)_so", "\\1",
-                                so$orig.ident)
-levels_sample <- sub("TC_SC03_(S\\d+T)_so", "\\1",
-                     levels(so$orig.ident))
-so$sample <-
-  factor(so$sample, levels=levels_sample)
+so$sample <- sub("TC_SC03_(S\\d+T)_so", "\\1", so$orig.ident)
+levels_sample <- sub("TC_SC03_(S\\d+T)_so", "\\1", levels(so$orig.ident))
+so$sample <- factor(so$sample, levels=levels_sample)
+```
+
+# Sample Name
+
+```{r create_sample_name_column, echo=T}
+sample_to_sample_name = c("S1T" = "H1",
+                          "S2T" = "H2",
+                          "S3T" = "H3",
+                          "S5T" = "H4",
+                          "S6T" = "H5",
+                          "S7T" = "H6",
+                          "S8T" = "S1",
+                          "S9T" = "S2",
+                          "S10T" = "S3",
+                          "S11T" = "S4",
+                          "S12T" = "S5",
+                          "S13T" = "S6")
+so$sample_name <- factor(unname(sample_to_sample_name[so$sample]),
+                         levels = c("S1", "S2", "S3", "S4", "S5", "S6",
+                                    "H1", "H2", "H3", "H4", "H5", "H6"))
 ```
 
 # Cell types
@@ -172,6 +193,13 @@ so$clinical_condition <-
     factor(so$clinical_condition, levels = conditions)
 ```
 
+```{r create_clinical_condition_abbrev, echo=TRUE}
+so$clinical_condition.abbrev <- factor(
+  substr(as.character(so$clinical_condition), 1, 1),
+  levels = substr(levels(so$clinical_condition), 1, 1)
+)
+```
+
 # Select clustering resolution
 
 Select the clustering resolution to be used for the downstream analysis.
@@ -192,6 +220,7 @@ The colors are saved in some columns of the `so@misc` slot:
 - `fctype_cols` for the fine cell type labels
 - `cond_cols` for the clinical conditions
 - `sample_cols` for the samples
+- `sample_name_cols` for the sample names
 - `cluster_cols` for the clusters
 - `phase_cols` for the cell cycle phases
 
@@ -241,8 +270,10 @@ so@misc$cond_cols <- c(
 so@misc$sample_cols <-
   colorRampPalette(brewer.pal(8, name = "Accent"))(
                   length(unique(so$sample)))
-names(so@misc$sample_cols) <-
-  levels(so$sample)
+names(so@misc$sample_cols) <- levels(so$sample)
+
+so@misc$sample_name_cols <- so@misc$sample_cols
+names(so@misc$sample_name_cols) <- levels(so$sample_name)
 ```
 
 ```{r color_scheme_for_clusters}
