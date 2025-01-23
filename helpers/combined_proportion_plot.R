@@ -1,6 +1,7 @@
 library(cowplot)
 library(ggplot2)
 library(dplyr)
+library(RColorBrewer)
 
 proportion_barplot <- function(seurat_obj, celltype_col, condition_col, condition_title = condition_col,
                                condition_cols = c("darkgreen", "darkred")) {
