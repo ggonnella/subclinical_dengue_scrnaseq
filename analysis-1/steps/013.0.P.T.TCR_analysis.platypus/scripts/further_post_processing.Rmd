@@ -126,7 +126,7 @@ for (ct in cell_types) {
 ```{r gene_usage_analysis_unsplitted}
 unsplitted_results <-
   gene_usage_signif(vgm_HL$VDJ,
-                    celltype = "CD8+ TEMRA",
+                    celltype = "CD8+ EM",
                     celltype_column = "pruned.labels_singleR_fine.abbrev",
                     genesets = c("VH_VL_pairing"))
 ```
