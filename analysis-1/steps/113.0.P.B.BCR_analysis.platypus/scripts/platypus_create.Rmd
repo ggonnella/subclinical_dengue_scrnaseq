@@ -1,0 +1,119 @@
+---
+title: "InDen B cells | Platypus Object Creation"
+author: "Giorgio Gonnella"
+date: "2024-06-28"
+output:
+  html_document:
+    theme: sandstone
+params:
+  pfx: "/srv/baia/"
+  libpath: "/home/giorgio/R-pkg-Seurat5/"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message=F, warning=F, echo=T)
+.libPaths(c(params$libpath, .libPaths()))
+
+library(Platypus)
+library(dplyr)
+
+prj_root <- paste0(params$pfx, "inden/")
+analysis_root <- paste0(prj_root, "analysis-1/")
+
+vdj_counts_pfx1 <- paste0(prj_root, "data/counts/")
+vdj_counts_pfx2 <- paste0(prj_root, "data/counts2/")
+
+input_step_dir <- paste0(analysis_root, "steps/108.0.P.B.split_plasmablasts/")
+input_var_dir <- paste0(input_step_dir, "results/vars/")
+if (!dir.exists(input_var_dir)) {
+  stop("Input variable directory does not exist: ", input_var_dir)
+}
+
+this_step_dir <- paste0(analysis_root, "steps/113.0.P.B.BCR_analysis.platypus/")
+if (!dir.exists(this_step_dir)) {
+  stop("Current step directory does not exist: ", this_step_dir)
+}
+
+var_dir <- paste0(this_step_dir, "results/vars/")
+dir.create(var_dir, showWarnings = FALSE, recursive = TRUE)
+
+plots_dir <- paste0(this_step_dir, "results/plots/")
+dir.create(plots_dir, showWarnings = FALSE, recursive = TRUE)
+
+helpers_dir <- paste0(prj_root, "helpers/")
+source(paste0(helpers_dir, "platypus_helpers.R"))
+```
+
+# Loading input files
+
+## VDJ data
+
+```{r input_files}
+VDJ_dirs <- list()
+for (i in c(1, 5:9, 11:13)) {
+  s <- paste0("sample_", i, "_B")
+  VDJ_dirs[[i]] <- paste0(vdj_counts_pfx1, s, "/per_sample_outs/", s, "/vdj_b")
+}
+for (i in 15:16) {
+  s <- paste0("sample_", i, "_B")
+  VDJ_dirs[[i]] <- paste0(vdj_counts_pfx2, s, "/outs/per_sample_outs/", s, "/vdj_b")
+}
+VDJ_dirs <- VDJ_dirs[sapply(VDJ_dirs, function(x) !is.null(x))]
+names(VDJ_dirs) <- paste0("S", c(1, 5:9, 11:13, 15:16), "B")
+print(VDJ_dirs)
+```
+
+```{r check_that_all_VDJ_dirs_exist}
+for (dir in VDJ_dirs) {
+  if (!dir.exists(dir)) {
+    stop(paste0("Directory ", dir, " does not exist"))
+  }
+}
+```
+
+## Seurat Object
+
+```{r load_seurat_object}
+so <- readRDS(file = paste0(input_var_dir, "splitted_so.rds"))
+```
+
+Platypus requires that ``sample_id`` contains only s followed by a number.
+We will create a new column ``sample_id`` that contains the sample number,
+making sure that they are ordered as the levels of the ``sample`` column.
+
+```{r setup sample_id}
+lev_sample <- levels(so$sample)
+so@misc$sample_id_table <- data.frame(sample = lev_sample,
+                              sample_id = paste0("s", 1:length(lev_sample)))
+so$sample_id <-
+  so@misc$sample_id_table$sample_id[so$sample]
+so$sample_id <- factor(so$sample_id, levels=paste0("s", 1:length(lev_sample)))
+rm(lev_sample)
+```
+
+```{r setup_group_id}
+so$group_id <- so$clinical_condition
+```
+
+# Create VGM
+
+```{r create_vgm}
+vgm <- VDJ_GEX_matrix(VDJ.out.directory.list = VDJ_dirs,
+                      Seurat.in = so,
+                      parallel.processing = "mclapply",
+                      integrate.GEX.to.VDJ = F,
+                      integrate.VDJ.to.GEX = F)
+```
+
+## Save
+
+```{r saving_vgm_HL}
+saveRDS(vgm, file = paste0(var_dir, "vgm_raw.rds"))
+```
+
+## Session Info
+
+```{r session_info, echo=FALSE}
+sessionInfo()
+```
+

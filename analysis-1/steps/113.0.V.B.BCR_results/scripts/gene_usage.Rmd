@@ -1,0 +1,472 @@
+---
+title: "Inden B cels | BCR Analysis | Gene Usage"
+author: "Giorgio Gonnella"
+date: "2024-10-14"
+output:
+  html_document:
+    theme: sandstone
+params:
+  pfx: "/srv/baia/"
+  libpath: "/home/giorgio/R-pkg-Seurat5/"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message=F, warning=F, echo=T)
+.libPaths(c(params$libpath, .libPaths()))
+
+library(Platypus)
+library(ggplot2)
+
+prj_root <- paste0(params$pfx, "inden/")
+analysis_root <- paste0(prj_root, "analysis-1/")
+
+input_step_dir <- paste0(analysis_root,
+                         "steps/113.0.P.B.BCR_analysis.platypus/")
+input_var_dir <- paste0(input_step_dir, "results/vars/")
+if (!dir.exists(input_var_dir)) {
+  stop("Input variable directory does not exist: ", input_var_dir)
+}
+
+this_step_dir <- paste0(analysis_root, "steps/113.0.V.B.BCR_results/")
+if (!dir.exists(this_step_dir)) {
+  stop("Current step directory does not exist: ", this_step_dir)
+}
+plots_dir <- paste0(this_step_dir, "results/plots/")
+tables_dir <- paste0(this_step_dir, "results/tables/")
+dir.create(plots_dir, showWarnings = F, recursive = T)
+dir.create(tables_dir, showWarnings = F, recursive = T)
+
+helpers_dir = paste0(prj_root, "helpers/")
+source(paste0(helpers_dir, "ggplot2_helpers.R"))
+source(paste0(helpers_dir, "platypus_helpers.R"))
+```
+
+## Load data
+
+```{r load_vgm}
+vgm <- readRDS(file = paste0(input_var_dir, "vgm.rds"))
+vgm_HL <- readRDS(file = paste0(input_var_dir, "vgm_HL.rds"))
+```
+
+## Gene usage - Heavy chain
+
+```{r}
+vgm[["GEX"]]$VDJ_cgene_grp <- gsub("\\d+$", "", vgm[["GEX"]]$VDJ_cgene)
+vgm[["GEX"]]$VDJ_vgene1 <- ifelse(grepl(";", vgm[["GEX"]]$VDJ_vgene), "multiple", vgm[["GEX"]]$VDJ_vgene)
+vgm[["GEX"]]$VDJ_vgene_grp <- sapply(strsplit(vgm[["GEX"]]$VDJ_vgene1, "-"), function(x) x[1])
+vgm[["GEX"]]$VDJ_dgene1 <- ifelse(grepl(";", vgm[["GEX"]]$VDJ_dgene), "multiple", vgm[["GEX"]]$VDJ_dgene)
+vgm[["GEX"]]$VDJ_dgene_grp <- sapply(strsplit(vgm[["GEX"]]$VDJ_dgene1, "-"), function(x) x[1])
+vgm[["GEX"]]$VDJ_jgene1 <- ifelse(grepl(";", vgm[["GEX"]]$VDJ_jgene), "multiple", vgm[["GEX"]]$VDJ_jgene)
+```
+
+### C gene
+
+```{r}
+plot <- DimPlot(vgm[["GEX"]], reduction="umapharm", group.by="VDJ_cgene_grp",
+                split.by = 'clinical_condition',
+                cols = c(
+        "IGHG" = "#9553A1",
+        "IGHA" = "#3D58A7",
+        "IGHE" = "#e78ac3",
+        "IGHD" = "#76C161",
+        "IGHM" = "#942E28")) + ggtitle("Heavy chain C gene group")
+split_print_legend(plot)
+```
+
+```{r}
+data <- data.frame(
+  condition = factor(vgm[["VDJ"]][["clinical_condition"]]),
+  sample = factor(vgm[["VDJ"]][["sample"]]),
+  gene = vgm[["GEX"]]$VDJ_cgene_grp
+)
+plot_data <- data %>%
+  group_by(sample, condition, gene) %>%
+  summarise(count = n())
+
+# remove the NA values
+plot_data <- plot_data %>% filter(!is.na(gene))
+
+plot <- ggplot(plot_data, aes(x=gene, y=count, fill=condition)) + 
+  geom_bar(stat="identity", position="dodge") +
+  xlab("Heavy chain C gene group") + 
+  ylab("Count") +
+  facet_wrap(~sample) +
+  theme(plot.title.position = "plot", plot.title = element_text(hjust = 0.5)) +
+  theme(legend.position="none") +
+  scale_fill_manual(values=vgm[["GEX"]]@misc$cond_cols)
+print(plot)
+```
+
+```{r}
+data <- data.frame(
+  condition = factor(vgm[["VDJ"]][["clinical_condition"]]),
+  celltype = factor(vgm[["VDJ"]][["celltype"]]),
+  gene = vgm[["GEX"]]$VDJ_cgene_grp
+)
+plot_data <- data %>%
+  group_by(celltype, condition, gene) %>%
+  summarise(count = n())
+
+# remove the NA values
+plot_data <- plot_data %>% filter(!is.na(gene))
+
+plot <- ggplot(plot_data, aes(x=gene, y=count, fill=condition)) + 
+  geom_bar(stat="identity", position="dodge") +
+  xlab("Heavy chain C gene group") + 
+  ylab("Count") +
+  facet_wrap(~celltype) +
+  theme(plot.title.position = "plot", plot.title = element_text(hjust = 0.5)) +
+  theme(legend.position="none") +
+  scale_fill_manual(values=vgm[["GEX"]]@misc$cond_cols)
+print(plot)
+```
+
+```{r}
+plot <- DimPlot(vgm[["GEX"]], reduction="umapharm", group.by="VDJ_cgene",
+                split.by = 'clinical_condition',
+                cols = c(
+        "IGHG1" = "#9553A1",
+        "IGHG2" = "#F7911E",
+        "IGHG3" = "#010202",
+        "IGHG4" = "#8da0cb",
+        "IGHA1" = "#3D58A7",
+        "IGHA2" = "#F23325",
+        "IGHE" = "#e78ac3",
+        "IGHD" = "#76C161",
+        "IGHM" = "#942E28")) + ggtitle("Heavy chain C gene allele")
+split_print_legend(plot)
+filename <- paste0(plots_dir, "heavy_chain_Cgene_group.svg")
+ggsave(filename, plot, device = "svg", width = 7, height = 5)
+```
+
+```{r}
+vgm <- transfer_gex_to_vdj(vgm, "pruned.labels_singleR_fine")
+```
+
+```{r}
+print(create_isotype_distribution_plot(vgm))
+```
+
+```{r}
+for (celltype in levels(vgm$VDJ$pruned.labels_singleR_fine)) {
+  print(celltype)
+  plot <- create_isotype_distribution_plot(vgm, sel_celltype = celltype,
+                            celltype_col = "pruned.labels_singleR_fine")
+  print(plot)
+  celltype_sanitized <- gsub(" ", "_", celltype)
+  filename <- paste0(plots_dir, "heavy_chain_Cgene_group_", celltype_sanitized,
+                     ".svg")
+  ggsave(filename, plot, device = "svg", width = 10, height = 10)
+}
+```
+### V gene
+
+```{r}
+plot <- DimPlot(vgm[["GEX"]], reduction="umapharm", group.by="VDJ_vgene_grp",
+                split.by = 'clinical_condition') +
+  ggtitle("Heavy chain V gene group")
+split_print_legend(plot)
+```
+
+```{r}
+plot <- DimPlot(vgm[["GEX"]], reduction="umapharm", group.by="VDJ_vgene1",
+                split.by = 'clinical_condition') +
+  ggtitle("Heavy chain V gene allele")
+split_print_legend(plot)
+```
+
+### D gene
+
+```{r}
+p<-DimPlot(vgm[["GEX"]], reduction="umapharm", group.by="VDJ_dgene_grp",
+           split.by = 'clinical_condition') +
+           ggtitle("Heavy chain D gene group")
+split_print_legend(p)
+```
+
+```{r}
+p<-DimPlot(vgm[["GEX"]], reduction="umapharm", group.by="VDJ_dgene1",
+           split.by = 'clinical_condition') +
+           ggtitle("Heavy chain D gene allele")
+split_print_legend(p)
+```
+
+### J gene
+
+```{r}
+p<-DimPlot(vgm[["GEX"]], reduction="umapharm", group.by="VDJ_jgene1",
+           split.by = 'clinical_condition') +
+           ggtitle("Heavy chain J gene")
+split_print_legend(p)
+```
+
+## Gene usage - Light chain
+
+```{r}
+vgm_HL[["GEX"]]$VJ_cgene1 <- ifelse(grepl(";", vgm_HL[["GEX"]]$VJ_cgene), "multiple", vgm_HL[["GEX"]]$VJ_cgene)
+vgm_HL[["GEX"]]$VJ_cgene_grp <- ifelse(grepl("^IGKC", vgm_HL[["GEX"]]$VJ_cgene1), "Kappa", 
+                                   ifelse(grepl("^IGLC", vgm_HL[["GEX"]]$VJ_cgene1), "Lambda", NA))
+vgm_HL[["GEX"]]$VJ_vgene1 <- ifelse(grepl(";", vgm_HL[["GEX"]]$VJ_vgene), "multiple", vgm_HL[["GEX"]]$VJ_vgene)
+vgm_HL[["GEX"]]$VJ_vgene_grp <- sapply(strsplit(vgm_HL[["GEX"]]$VJ_vgene1, "-"), function(x) x[1])
+vgm_HL[["GEX"]]$VJ_jgene1 <- ifelse(grepl(";", vgm_HL[["GEX"]]$VJ_jgene), "multiple", vgm_HL[["GEX"]]$VJ_jgene)
+```
+
+### C gene
+
+```{r}
+plot <- DimPlot(vgm_HL[["GEX"]], reduction="umapharm", group.by="VJ_cgene_grp",
+                split.by = 'clinical_condition',
+                na.value = "gray",
+                cols =  c("Kappa" = "#008000", "Lambda" = "#ff8844")) +
+  ggtitle("Light chain C gene group")
+split_print_legend(plot)
+```
+
+```{r}
+data <- data.frame(
+  condition = factor(vgm_HL[["VDJ"]][["clinical_condition"]]),
+  sample = factor(vgm_HL[["VDJ"]][["sample"]]),
+  gene = vgm_HL[["GEX"]]$VJ_cgene_grp
+)
+plot_data <- data %>%
+  group_by(sample, condition, gene) %>%
+  summarise(count = n())
+
+# remove the NA values
+plot_data <- plot_data %>% filter(!is.na(gene))
+
+plot <- ggplot(plot_data, aes(x=gene, y=count, fill=condition)) +
+  geom_bar(stat="identity", position="dodge") +
+  xlab("Light chain C gene group") +
+  ylab("Count") +
+  facet_wrap(~sample) +
+  theme(plot.title.position = "plot", plot.title = element_text(hjust = 0.5)) +
+  theme(legend.position="none") +
+  scale_fill_manual(values=vgm_HL[["GEX"]]@misc$cond_cols)
+print(plot)
+```
+
+```{r}
+data <- data.frame(
+  condition = factor(vgm_HL[["VDJ"]][["clinical_condition"]]),
+  celltype = factor(vgm_HL[["VDJ"]][["celltype"]]),
+  gene = vgm_HL[["GEX"]]$VJ_cgene_grp
+)
+plot_data <- data %>%
+  group_by(celltype, condition, gene) %>%
+  summarise(count = n())
+
+# remove the NA values
+plot_data <- plot_data %>% filter(!is.na(gene))
+
+plot <- ggplot(plot_data, aes(x=gene, y=count, fill=condition)) + 
+  geom_bar(stat="identity", position="dodge") +
+  xlab("Light chain C gene group") +
+  ylab("Count") +
+  facet_wrap(~celltype) +
+  theme(plot.title.position = "plot", plot.title = element_text(hjust = 0.5)) +
+  theme(legend.position="none") +
+  scale_fill_manual(values=vgm_HL[["GEX"]]@misc$cond_cols)
+print(plot)
+```
+
+```{r}
+plot <- DimPlot(vgm_HL[["GEX"]], reduction="umapharm", group.by="VJ_cgene1",
+                split.by = 'clinical_condition',
+                na.value = "gray") +
+  ggtitle("Light chain C gene allele")
+split_print_legend(plot)
+```
+
+```{r}
+print(light_chain_Cgene_distribution_plot(vgm_HL))
+for (celltype in levels(vgm_HL$VDJ$celltype)) {
+  print(light_chain_Cgene_distribution_plot(vgm_HL, sel_celltype = celltype))
+}
+```
+
+### V gene
+
+```{r}
+plot <- DimPlot(vgm_HL[["GEX"]], reduction="umapharm", group.by="VJ_vgene_grp",
+                split.by = 'clinical_condition',
+                na.value = "gray") +
+  ggtitle("Light chain V gene group")
+split_print_legend(plot)
+```
+
+```{r}
+plot <- DimPlot(vgm_HL[["GEX"]], reduction="umapharm", group.by="VJ_vgene1",
+                split.by = 'clinical_condition',
+                na.value = "gray") +
+  ggtitle("Light chain V gene allele")
+split_print_legend(plot)
+```
+
+### J gene
+
+```{r}
+
+plot <- DimPlot(vgm_HL[["GEX"]], reduction="umapharm", group.by="VJ_jgene1",
+                split.by = 'clinical_condition',
+                na.value = "gray") +
+  ggtitle("Light chain J gene allele")
+split_print_legend(plot)
+```
+
+### Significance of gene usage and pairings differences
+
+```{r}
+message("Starting analysis...")
+
+all_data_results <- gene_usage_signif(vgm_HL$VDJ, n_permutations = 10000)
+
+cell_types <- unique(vgm_HL$VDJ$pruned.labels_singleR_fine.mod)
+
+cell_type_results <- data.frame()
+for (ct in cell_types) {
+  results <- gene_usage_signif(vgm_HL$VDJ, celltype = ct,
+                               celltype_column = "pruned.labels_singleR_fine.mod",
+                               n_permutations = 10000)
+  if (!is.null(results) && nrow(results) > 0) {
+    #results$Cell_Type <- ct
+    cell_type_results <- rbind(cell_type_results, results)
+  }
+}
+
+vgm_HL$VDJ$pruned.labels_singleR_fine <- NULL
+vgm_HL <- transfer_gex_to_vdj(vgm_HL, "pruned.labels_singleR_fine")
+unsplitted_results <- gene_usage_signif(vgm_HL$VDJ,
+                                        celltype = "Plasmablasts",
+                                        celltype_column = "pruned.labels_singleR_fine",
+                                        n_permutations = 10000)
+
+combined_results <- rbind(all_data_results, cell_type_results, unsplitted_results)
+
+# Write to a TSV file
+output_file <- paste0(tables_dir, "BCR.genes_diff_usage.tsv")
+write.table(combined_results, output_file, sep="\t", row.names = FALSE, quote = FALSE)
+
+signif_results <- combined_results[combined_results$p_adj < 0.05,]
+output_file <- paste0(tables_dir, "BCR.genes_diff_usage.signif.tsv")
+write.table(signif_results, output_file, sep="\t", row.names = FALSE, quote = FALSE)
+
+message("Analysis complete. Results saved to ", output_file)
+```
+```{r}
+plasmablasts <- subset(vgm_HL$VDJ, celltype %in% c("Proliferating plasmablasts", "Non-proliferating plasmablasts"))
+plasmablasts$celltype = droplevels(plasmablasts$celltype)
+results <- gene_usage_signif(plasmablasts, celltype = "Hospitalized", celltype_column = "clinical_condition",
+                                    group_column = "celltype", n_permutations = 10000)
+signif_results <- results[results$p_adj < 0.05, ]
+output_file <- paste0(tables_dir, "BCR.genes_diff_usage.Pr-vs-NonPr-hospitalized.signif.tsv")
+write.table(signif_results, output_file, sep="\t", row.names=F, quote=F)
+signif_pairs_nonpr_vs_pr = subset(signif_results, tested_set == "VH_VL_pairing")$genes
+```
+
+### Gene usage pairings plots
+
+```{r, fig.height=12, fig.width=8}
+signif_pairs = list()
+signif_pairs[["Total"]] = c("IGHV3-74+IGKV2-30", "IGHV1-46+IGLV1-40", "IGHV3-7+IGKV2-30", "IGHV3-43+IGLV1-51", 
+  "IGHV3-7+IGKV3-20", "IGHV3-23+IGLV2-8", "IGHV3-23+IGKV2-30", "IGHV3-43+IGKV3-11", 
+  "IGHV3-7+IGKV4-1", "IGHV3-23+IGLV1-44", "IGHV4-34+IGLV1-40", "IGHV3-23+IGLV2-14", 
+  "IGHV3-23+IGKV4-1", "IGHV3-23+IGKV1-5", "IGHV3-23+IGKV1D-39", "IGHV3-23+IGKV3-15", 
+  "IGHV3-33+IGLV2-14", "IGHV1-69D+IGKV1D-39", "IGHV1-18+IGKV1D-39", "IGHV3-48+IGKV1-5", 
+  "IGHV1-69D+IGLV1-40", "IGHV1-69D+IGLV2-11", "IGHV1-69D+IGLV1-47", "IGHV3-33+IGKV1-17", 
+  "IGHV1-69D+IGLV2-14", "IGHV1-69+IGKV1D-39", "IGHV5-51+IGLV3-21", "IGHV1-69D+IGLV7-43", 
+  "IGHV5-10-1+IGKV1D-39", "IGHV1-69+IGLV2-14", "IGHV1-69+IGLV3-21", "IGHV5-10-1+IGLV1-47", 
+  "IGHV1-69+IGLV2-11")
+signif_pairs[["Non-proliferating plasmablasts"]] = c("IGHV1-69D+IGLV1-40", "IGHV4-59+IGKV3-20", "IGHV1-58+IGLV1-47", "IGHV3-33+IGKV1-17", 
+  "IGHV1-69D+IGLV2-8", "IGHV3-23+IGLV1-47", "IGHV1-69D+IGLV1-47", "IGHV4-34+IGLV3-19", 
+  "IGHV4-39+IGKV3-20", "IGHV1-69+IGKV1D-39", "IGHV1-69D+IGLV3-21", "IGHV4-39+IGKV1-9", 
+  "IGHV1-69D+IGKV3-11", "IGHV1-69D+IGLV2-23", "IGHV1-69D+IGKV3-20", "IGHV3-33+IGKV3-20", 
+  "IGHV1-46+IGKV3-20", "IGHV1-69D+IGKV3-15", "IGHV1-69+IGLV2-14", "IGHV1-69D+IGLV7-43", 
+  "IGHV3-33+IGLV1-40", "IGHV3-48+IGKV3-20", "IGHV1-69+IGLV2-11", "IGHV1-69D+IGLV2-11", 
+  "IGHV3-33+IGLV3-21", "IGHV1-69D+IGKV4-1", "IGHV3-48+IGKV1-5", "IGHV1-18+IGKV1D-39", 
+  "IGHV5-51+IGKV3-20", "IGHV1-69D+IGKV1D-39", "IGHV1-69D+IGLV2-14", "IGHV5-51+IGLV3-21")
+signif_pairs[["Proliferating plasmablasts"]] =
+  c("IGHV1-69D+IGKV2-30",
+    "IGHV1-69D+IGKV3-20",
+    "IGHV5-51+IGKV3-20", 
+    "IGHV5-51+IGLV3-21",
+    "IGHV1-69D+IGKV1D-39",
+    "IGHV1-69D+IGKV3-15", 
+    "IGHV1-69D+IGLV1-40",
+    "IGHV1-69D+IGLV2-14")
+signif_pairs[["Non-switched memory B cells"]] = c("IGHV4-39+IGKV1D-39", "IGHV2-5+IGKV4-1", "IGHV3-7+IGKV2-30", 
+  "IGHV3-23+IGKV1D-39", "IGHV3-23+IGKV2-30", "IGHV3-33+IGLV2-14", 
+  "IGHV3-23+IGLV1-44", "IGHV3-7+IGKV4-1", "IGHV3-23+IGKV4-1", 
+  "IGHV3-23+IGKV3-11")
+signif_pairs[["Plasmablasts"]] = c("IGHV3-33+IGKV1-5", "IGHV3-33+IGLV2-14", "IGHV1-69D+IGLV1-40", "IGHV1-18+IGLV2-14", 
+  "IGHV1-69+IGLV1-44", "IGHV1-69D+IGLV1-44", "IGHV4-39+IGLV4-69", "IGHV4-59+IGKV3-20", 
+  "IGHV5-10-1+IGKV1-33", "IGHV1-18+IGKV3-20", "IGHV1-69D+IGLV4-69", "IGHV3-23+IGKV1-12", 
+  "IGHV3-43+IGKV1D-39", "IGHV5-10-1+IGKV1D-39", "IGHV1-69D+IGKV1-12", "IGHV1-69D+IGKV2-30", 
+  "IGHV1-69D+IGLV1-51", "IGHV3-21+IGKV1-5", "IGHV3-21+IGKV3-20", "IGHV3-21+IGLV3-21", 
+  "IGHV1-46+IGLV1-44", "IGHV1-69D+IGLV3-1", "IGHV3-23+IGKV3-11", "IGHV3-23+IGLV3-21", 
+  "IGHV1-69D+IGLV2-8", "IGHV3-15+IGKV1D-39", "IGHV4-34+IGLV3-19", "IGHV4-39+IGKV3-20", 
+  "IGHV1-58+IGLV1-47", "IGHV3-23+IGLV1-40", "IGHV1-69D+IGLV1-47", "IGHV3-23+IGLV1-47", 
+  "IGHV4-59+IGKV1D-39", "IGHV4-39+IGKV1-9", "IGHV3-33+IGKV1-17", "IGHV1-69+IGKV1D-39", 
+  "IGHV3-33+IGKV3-20", "IGHV1-69D+IGLV3-21", "IGHV1-69D+IGLV2-23", "IGHV1-46+IGKV3-20", 
+  "IGHV1-69+IGLV2-14", "IGHV1-69D+IGLV7-43", "IGHV1-69+IGLV2-11", "IGHV3-33+IGLV1-40", 
+  "IGHV1-69D+IGKV3-11", "IGHV1-69D+IGLV2-11", "IGHV3-48+IGKV3-20", "IGHV1-69D+IGKV3-20", 
+  "IGHV1-69D+IGKV3-15", "IGHV3-33+IGLV3-21", "IGHV1-69D+IGKV4-1", "IGHV3-48+IGKV1-5", 
+  "IGHV1-18+IGKV1D-39", "IGHV5-51+IGKV3-20", "IGHV1-69D+IGKV1D-39", "IGHV5-51+IGLV3-21", 
+  "IGHV1-69D+IGLV2-14")
+```
+
+```{r, fig.height=12, fig.width=8}
+plt <- gene_usage_alluvial(vgm_HL[["VDJ"]], "VDJ_vgene", "VJ_vgene",
+                                left_lbl = "IGHV", right_lbl = "IGLV/IGKV",
+                                grp1 = "Inapparent", grp2 = "Hospitalized", min_clonotype_frequency=2,
+                                left_lbl_pfx = "IGHV", right_lbl_pfx = "IG", signif_pairs = signif_pairs[["Total"]],
+                                stratum_label_size=2.8, stratum_label_threshold = 0.02, stratum_label_size_prop_factor = 0)
+fname = paste0(plots_dir, "B.VH_VL_pairings.Total.svg")
+ggsave(fname, plt, device = "svg", width=6, height=9)
+print(plt)
+```
+
+```{r, fig.height=12, fig.width=8}
+plt <- gene_usage_alluvial(vgm_HL[["VDJ"]], "VDJ_vgene", "VJ_vgene",
+                                left_lbl = "IGHV", right_lbl = "IGLV/IGKV",
+                                sel_celltype = "Plasmablasts", celltype_col = "pruned.labels_singleR_fine",
+                                grp1 = "Inapparent", grp2 = "Hospitalized", min_clonotype_frequency=2,
+                                left_lbl_pfx = "IGHV", right_lbl_pfx = "IG", signif_pairs = signif_pairs[["Plasmablasts"]],
+                                stratum_label_size=2.8, stratum_label_threshold = 0.02, stratum_label_size_prop_factor = 0)
+fname = paste0(plots_dir, "B.VH_VL_pairings.Plasmablasts.svg")
+ggsave(fname, plt, device = "svg", width=6, height=9)
+print(plt)
+```
+
+```{r, fig.height=12, fig.width=8}
+for (celltype in setdiff(names(signif_pairs), c("Total", "Plasmablasts"))) {
+  plt <- gene_usage_alluvial(vgm_HL[["VDJ"]], "VDJ_vgene", "VJ_vgene",
+                                  left_lbl = "IGHV", right_lbl = "IGLV/IGKV",
+                                  sel_celltype = celltype, celltype_col = "celltype",
+                                  grp1 = "Inapparent", grp2 = "Hospitalized", min_clonotype_frequency=2,
+                                  left_lbl_pfx = "IGHV", right_lbl_pfx = "IG", signif_pairs = signif_pairs[[celltype]],
+                                  stratum_label_size=2.8, stratum_label_threshold = 0.02, stratum_label_size_prop_factor = 0)
+  fname = paste0(plots_dir, "B.VH_VL_pairings.",gsub(" ", "_", celltype),".svg")
+  ggsave(fname, plt, device = "svg", width=6, height=9)
+  print(plt)
+}
+```
+
+```{r, fig.height=12, fig.width=8}
+plt <- gene_usage_alluvial(plasmablasts, "VDJ_vgene", "VJ_vgene",
+                                left_lbl = "IGHV", right_lbl = "IGLV/IGKV",
+                                sel_celltype = "Hospitalized", celltype_col = "clinical_condition",
+                                grp_col = "pruned.labels_singleR_fine.mod",
+                                grp1 = "Non-proliferating plasmablasts", grp2 = "Proliferating plasmablasts", min_clonotype_frequency=2,
+                                left_lbl_pfx = "IGHV", right_lbl_pfx = "IG", signif_pairs = signif_pairs_nonpr_vs_pr,
+                                stratum_label_size=3, stratum_label_threshold = 0, stratum_label_size_prop_factor = 0)
+fname = paste0(plots_dir, "B.VH_VL_pairings.Hospitalized_Plasmablasts.pr_vs_nonpr.all_labels.svg")
+ggsave(fname, plt, device = "svg", width=6, height=14)
+print(plt)
+```
+
+# Session info
+
+```{r}
+sessionInfo()
+```

@@ -1,0 +1,524 @@
+---
+title: "InDen B cells | Platypus Object Creation"
+author: "Giorgio Gonnella"
+date: "2024-06-28"
+output:
+  html_document:
+    theme: sandstone
+params:
+  pfx: "/srv/baia/"
+  libpath: "/home/giorgio/R-pkg-Seurat5/"
+  enclone_bindir: "/home/giorgio/bin"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message=F, warning=F, echo=T)
+.libPaths(c(params$libpath, .libPaths()))
+
+library(Platypus)
+library(dplyr)
+
+prj_root <- paste0(params$pfx, "inden/")
+analysis_root <- paste0(prj_root, "analysis-1/")
+
+encode_input <- paste0(prj_root, "data/bcr_vdj_output")
+
+input_step_dir <- paste0(analysis_root, "steps/113.0.P.B.BCR_analysis.platypus/")
+input_var_dir <- paste0(input_step_dir, "results/vars/")
+if (!dir.exists(input_var_dir)) {
+  stop("Input variable directory does not exist: ", input_var_dir)
+}
+
+this_step_dir <- paste0(analysis_root, "steps/113.0.P.B.BCR_analysis.platypus/")
+if (!dir.exists(this_step_dir)) {
+  stop("Current step directory does not exist: ", this_step_dir)
+}
+
+var_dir <- paste0(this_step_dir, "results/vars/")
+dir.create(var_dir, showWarnings = FALSE, recursive = TRUE)
+
+plots_dir <- paste0(this_step_dir, "results/plots/")
+dir.create(plots_dir, showWarnings = FALSE, recursive = TRUE)
+
+helpers_dir <- paste0(prj_root, "helpers/")
+source(paste0(helpers_dir, "platypus_helpers.R"))
+
+# make sure enclone path is added to system PATH
+Sys.setenv(PATH = paste0(Sys.getenv("PATH"), paste0(":", params$enclone_bindir)))
+```
+
+# Load data
+
+```{r load_vgm}
+vgm <- readRDS(file = paste0(input_var_dir, "vgm_raw.rds"))
+```
+
+# Post-processing
+
+## Cleanup metadata columns
+
+```{r cleanup_metadata_columns}
+columns_to_remove <- setdiff(grep("_fine", colnames(vgm[["GEX"]]@meta.data), value=T),
+                             grep("pruned.*_fine", colnames(vgm[["GEX"]]@meta.data), value=T))
+columns_to_remove <- c(columns_to_remove,
+                       setdiff(grep("_main", colnames(vgm[["GEX"]]@meta.data), value=T),
+                             grep("pruned.*_main", colnames(vgm[["GEX"]]@meta.data), value=T)))
+vgm[["GEX"]]@meta.data <-
+  vgm[["GEX"]]@meta.data[, !(colnames(vgm[["GEX"]]@meta.data) %in% columns_to_remove)]
+```
+
+## Fix GEX barcodes
+
+The GEX barcodes are in the format (orig.barcode)-(sfx) e.g. AAAGCAAAGAACTGTA-1
+which is the same as in the imported Seurat object, but the VDJ barcodes are in
+the format (sample\_id)\_(orig.barcode) e.g. s9\_AAAGCAAAGAACTGTA - which is
+correctly set as cell names in GEX but not as the barcode column.
+Thus we will fix the barcode column to be the same as the names.
+
+The VDJ\_avail and GEX\_avail columns are already correctly computed.
+
+```{r fix_barcodes}
+vgm[["GEX"]]$barcode = names(vgm[["GEX"]]$barcode)
+# assertions: all barcodes are unique
+stopifnot(length(unique(vgm[["GEX"]]$barcode)) == length(vgm[["GEX"]]$barcode))
+stopifnot(length(unique(vgm[["VDJ"]]$barcode)) == length(vgm[["VDJ"]]$barcode))
+```
+
+## Add sample names
+
+The sample column of VDJ is set to the same names as the sample column of GEX,
+based on the sample\_id column and the sample\_id\_table stored in GEX.
+
+```{r create_vdj_sample_column}
+index <- match(vgm[["VDJ"]]$sample_id,
+               vgm[["GEX"]]@misc$sample_id_table$sample_id)
+vgm[["VDJ"]]$sample <- factor(vgm[["GEX"]]@misc$sample_id_table$sample[index],
+                              levels = levels(vgm[["GEX"]]$sample))
+```
+
+```{r transfer_sample_name_to_vdj}
+vgm <- transfer_gex_to_vdj(vgm, "sample_name")
+```
+
+## Add clinical condition column
+
+```{r create_sample_clinical_condition_table}
+vgm[["GEX"]]@misc$sample_cond_table <-
+  vgm[["GEX"]]@meta.data %>% group_by(sample) %>%
+    summarise(clinical_condition = paste0(clinical_condition[[1]]))
+```
+
+```{r create vdj_clinical_condition_column}
+index <- match(vgm[["VDJ"]]$sample,
+               vgm[["GEX"]]@misc$sample_cond_table$sample)
+vgm[["VDJ"]]$clinical_condition <-
+  factor(vgm[["GEX"]]@misc$sample_cond_table$clinical_condition[index],
+         levels = levels(vgm[["GEX"]]$clinical_condition))
+rm(index)
+vgm[["VDJ"]]$group_id <- vgm[["VDJ"]]$clinical_condition
+```
+
+## Select celltype and clusters metadata from GEX previous analysis
+
+Copy the celltype annotations to a column "celltype" which is standard in the
+Platypus examples, and copy the the column to the VDJ for which GEX is avail,
+setting it to NA for all other (originally it is set to "B cell" for all VDJ).
+
+```{r transfer_celltypes}
+vgm[["GEX"]]$pruned.labels_singleR_fine.mod <-
+  droplevels(vgm[["GEX"]]$pruned.labels_singleR_fine.mod)
+vgm[["GEX"]]$celltype <- vgm[["GEX"]]$pruned.labels_singleR_fine.mod
+vgm[["GEX"]]$celltype.abbrev <-
+  vgm[["GEX"]]$pruned.labels_singleR_fine.mod.abbrev
+
+vgm <- transfer_gex_to_vdj(vgm, "pruned.labels_singleR_fine.mod")
+vgm <- transfer_gex_to_vdj(vgm, "pruned.labels_singleR_fine.mod.abbrev")
+vgm[["VDJ"]]$celltype <- NA
+vgm[["VDJ"]]$celltype <- vgm[["VDJ"]]$pruned.labels_singleR_fine.mod
+vgm[["VDJ"]]$celltype.abbrev <-
+  vgm[["VDJ"]]$pruned.labels_singleR_fine.mod.abbrev
+```
+
+Transfer the cluster annotation at the selected clustering resolution to
+the VDJ and copy it in the GEX and VDJ to the "seurat\_clusters" column,
+which is used in the Platypus examples.
+
+```{r transfer_clusters}
+vgm[["GEX"]]$seurat_clusters <-
+  vgm[["GEX"]]@meta.data[[vgm[["GEX"]]@misc$sel_res_col]]
+
+vgm <- transfer_gex_to_vdj(vgm, vgm[["GEX"]]@misc$sel_res_col)
+vgm[["VDJ"]]$seurat_clusters <- vgm[["VDJ"]][[vgm[["GEX"]]@misc$sel_res_col]]
+```
+
+## Filtering
+
+### Plots before filtering
+
+```{r cmp_n_cells}
+gex_data <- data.frame(sample = factor(vgm[["GEX"]]$sample), library = "GEX",
+                       celltype = factor(vgm[["GEX"]]$celltype.abbrev))
+vdj_data <- data.frame(sample = factor(vgm[["VDJ"]]$sample), library = "VDJ",
+                       celltype = factor(vgm[["VDJ"]]$celltype.abbrev))
+combined_data <- bind_rows(gex_data, vdj_data)
+plt <- ggplot(combined_data, aes(x = library, y = ..count.., fill=celltype)) +
+  geom_bar(stat = "count") +
+  facet_wrap(~sample,nrow=1)+
+  xlab("Sample") + ylab("N.cells") +
+  ggtitle("Number of cells") +
+  theme(legend.position = "bottom") +
+  scale_fill_manual(values = vgm[["GEX"]]@misc$fctype_mod_cols)
+ggsave(paste0(plots_dir, "before_filtering.n_cells_per_sample.pdf"), plt)
+plt
+```
+
+```{r first_analysis_plots}
+plt1 <- ggplot(data.frame(values=vgm[["GEX"]]$sample),
+       aes(x=values, fill=values)) + geom_bar() +
+       theme(legend.position="none") + xlab("Sample") + ylab("N.cells") +
+       ggtitle("Number of cells in the GEX library") +
+       scale_fill_manual(values = vgm[["GEX"]]@misc$sample_cols)
+plt2 <- ggplot(data.frame(values=vgm[["VDJ"]][["sample"]]),
+       aes(x=values, fill=values)) + geom_bar() +
+       theme(legend.position="none") + xlab("Sample") + ylab("N.cells") +
+       ggtitle("Number of cells in the VDJ library") +
+       scale_fill_manual(values = vgm[["GEX"]]@misc$sample_cols)
+plt <- grid.arrange(plt1, plt2, ncol=1)
+plt
+```
+
+```{r plot_analysis_celltypes_before_filtering, fig.height=25, fig.width=8}
+plt1 <- Seurat::DimPlot(vgm[["GEX"]],reduction = "umapharm",
+                       group.by = "seurat_clusters",
+                       cols = vgm[["GEX"]]@misc$cluster_cols)
+plt2 <- Seurat::DimPlot(vgm[["GEX"]],reduction = "umapharm",
+                       group.by = "celltype.abbrev",
+                       cols = vgm[["GEX"]]@misc$fctype_mod_cols)
+plt3 <- Seurat::DimPlot(vgm[["GEX"]],reduction = "umapharm",
+                      group.by = "sample",
+                      cols = vgm[["GEX"]]@misc$sample_cols)
+plt4 <- Seurat::DimPlot(vgm[["GEX"]],reduction = "umapharm",
+                       group.by = "VDJ_available")
+plt <- grid.arrange(plt1, plt2, plt3, plt4, ncol=1)
+print(plt)
+rm(plt, plt1, plt2, plt3, plt4)
+```
+
+### Table GEX/VDJ available
+
+```{r n_unavailable}
+print("VDJ available for cells in GEX dataset:")
+table(vgm[["GEX"]]$VDJ_available)
+
+print("GEX available for cells in VDJ dataset:")
+table(vgm[["VDJ"]]$GEX_available)
+
+print("VDJ available for cells in GEX dataset, by sample:")
+table(vgm[["GEX"]]$sample, vgm[["GEX"]]$VDJ_available)
+
+print("GEX available for cells in VDJ dataset, by sample:")
+table(vgm[["VDJ"]]$sample, vgm[["VDJ"]]$GEX_available)
+
+print("VDJ available for cells in GEX dataset, by celltype:")
+vgm[["GEX"]]$celltype <- droplevels(vgm[["GEX"]]$celltype)
+vgm[["GEX"]]$celltype.abbrev <- droplevels(vgm[["GEX"]]$celltype.abbrev)
+table(vgm[["GEX"]]$celltype.abbrev, vgm[["GEX"]]$VDJ_available)
+
+print("VDJ available for cells in GEX dataset, by cluster:")
+table(vgm[["GEX"]]$seurat_clusters, vgm[["GEX"]]$VDJ_available)
+
+```
+
+## Restrict to VDJ/GEX both available
+
+```{r filter_unavailable}
+vgm <- vgm_filter_unavailable(vgm)
+stopifnot(all(vgm[["GEX"]]$barcode %in% vgm[["VDJ"]]$barcode) &
+          all(vgm[["VDJ"]]$barcode %in% vgm[["GEX"]]$barcode))
+stopifnot(length(unique(vgm[["GEX"]]$barcode)) == length(vgm[["GEX"]]$barcode))
+stopifnot(length(unique(vgm[["VDJ"]]$barcode)) == length(vgm[["VDJ"]]$barcode))
+```
+
+## Plots after restricting to VDJ/GEX both available
+
+```{r VDJ_avail_analysis_plots}
+plt <- ggplot(data.frame(values=vgm[["GEX"]]$sample),
+       aes(x=values, fill=values)) + geom_bar() +
+       theme(legend.position="none") + xlab("Sample") + ylab("N.cells") +
+       ggtitle("Number of cells in the GEX and VDJ library") +
+       scale_fill_manual(values = vgm[["GEX"]]@misc$sample_cols)
+ggsave(paste0(plots_dir, "after_vdj_avail_filter.n_cells_per_sample.pdf"), plt)
+plt
+```
+
+### Aberrant n.of chains
+
+```{r n_aberrant}
+print("Missing VDJ chain: ")
+table(subset(vgm[["VDJ"]], Nr_of_VDJ_chains == 0)$sample)
+print("More than 1 VDJ chains: ")
+table(subset(vgm[["VDJ"]], Nr_of_VDJ_chains > 1)$sample)
+print("Missing VJ chain: ")
+table(subset(vgm[["VDJ"]], Nr_of_VJ_chains == 0)$sample)
+print("More than 1 VJ chains: ")
+table(subset(vgm[["VDJ"]], Nr_of_VJ_chains > 1)$sample)
+```
+
+```{r}
+total_counts <- table(vgm[["VDJ"]]$sample)
+missing_vdj_counts <- table(subset(vgm[["VDJ"]], Nr_of_VDJ_chains == 0)$sample)
+missing_vdj_percentages <- round((missing_vdj_counts /
+                                  total_counts[names(missing_vdj_counts)]) * 100, 2)
+more_than_1_vdj_counts <- table(subset(vgm[["VDJ"]], Nr_of_VDJ_chains > 1)$sample)
+more_than_1_vdj_percentages <- round((more_than_1_vdj_counts /
+                                      total_counts[names(more_than_1_vdj_counts)]) * 100, 2)
+missing_vj_counts <- table(subset(vgm[["VDJ"]], Nr_of_VJ_chains == 0)$sample)
+missing_vj_percentages <- round((missing_vj_counts /
+                                 total_counts[names(missing_vj_counts)]) * 100, 2)
+more_than_1_vj_counts <- table(subset(vgm[["VDJ"]], Nr_of_VJ_chains > 1)$sample)
+more_than_1_vj_percentages <- round((more_than_1_vj_counts /
+                                     total_counts[names(more_than_1_vj_counts)]) * 100, 2)
+total_abnormal_counts <- missing_vdj_counts + more_than_1_vdj_counts + missing_vj_counts + more_than_1_vj_counts
+total_abnormal_percentages <- round(total_abnormal_counts /
+                                    total_counts[names(total_abnormal_counts)] * 100, 2)
+
+results <- data.frame(
+  sample = names(total_counts),
+  missing_vdj_count = as.integer(missing_vdj_counts[names(total_counts)]),
+  missing_vdj_percent = as.vector(missing_vdj_percentages[names(total_counts)]),
+  more_than_1_vdj_count = as.integer(more_than_1_vdj_counts[names(total_counts)]),
+  more_than_1_vdj_percent = as.vector(more_than_1_vdj_percentages[names(total_counts)]),
+  missing_vj_count = as.integer(missing_vj_counts[names(total_counts)]),
+  missing_vj_percent = as.vector(missing_vj_percentages[names(total_counts)]),
+  more_than_1_vj_count = as.integer(more_than_1_vj_counts[names(total_counts)]),
+  more_than_1_vj_percent = as.vector(more_than_1_vj_percentages[names(total_counts)]),
+  total_abnormal_counts = as.integer(total_abnormal_counts[names(total_counts)]),
+  total_abnormal_percent = as.vector(total_abnormal_percentages[names(total_counts)])
+)
+
+# Replace NAs with 0 for counts and percentages
+results[is.na(results)] <- 0
+
+# Print the table using knitr::kable
+knitr::kable(results, caption = "Summary of VDJ and VJ Chain Abnormalities",
+             col.names = c("Sample",
+                             "Missing VDJ Count", "Missing VDJ Percent",
+                             "More than 1 VDJ Count", "More than 1 VDJ Percent",
+                             "Missing VJ Count", "Missing VJ Percent",
+                             "More than 1 VJ Count", "More than 1 VJ Percent",
+                             "Total abnormal Count", "Total abnormal Percent"))
+```
+
+
+```{r filter_aberrant}
+vgm <- require_one_H_and_not_more_than_one_L(vgm)
+stopifnot(all(vgm[["GEX"]]$barcode %in% vgm[["VDJ"]]$barcode) &
+          all(vgm[["VDJ"]]$barcode %in% vgm[["GEX"]]$barcode))
+stopifnot(length(unique(vgm[["GEX"]]$barcode)) == length(vgm[["GEX"]]$barcode))
+stopifnot(length(unique(vgm[["VDJ"]]$barcode)) == length(vgm[["VDJ"]]$barcode))
+```
+
+Due to the large number of cells without VJ, we will create two different
+datasets, one containing all sequences, one only sequences which also have the
+VJ.
+
+
+```{r cmp_n_cells_after_filter_aberrant}
+gex_data <- data.frame(sample = factor(vgm[["GEX"]]$sample), library = "GEX",
+                       celltype = factor(vgm[["GEX"]]$celltype.abbrev))
+vdj_data <- data.frame(sample = factor(vgm[["VDJ"]]$sample), library = "VDJ",
+                       celltype = factor(vgm[["VDJ"]]$celltype.abbrev))
+combined_data <- bind_rows(gex_data, vdj_data)
+combined_plot <- ggplot(combined_data, aes(x = library, y = ..count.., fill=celltype)) +
+  geom_bar(stat = "count") +
+  facet_wrap(~sample,nrow=1)+
+  xlab("Sample") + ylab("N.cells") +
+  ggtitle("Number of cells") +
+  theme(legend.position = "bottom") +
+  scale_fill_manual(values = vgm[["GEX"]]@misc$fctype_mod_cols)
+print(combined_plot)
+ggsave(paste0(plots_dir, "after_aberrant_filter.n_cells_per_sample.pdf"), combined_plot)
+```
+
+### Table GEX/VDJ available after filtering aberrant n.of chains
+
+```{r n_unavailable_after_filter_aberrant}
+print("VDJ available for cells in GEX dataset:")
+table(vgm[["GEX"]]$VDJ_available)
+
+print("VDJ available for cells in GEX dataset, by sample:")
+table(vgm[["GEX"]]$sample, vgm[["GEX"]]$VDJ_available)
+
+print("VDJ available for cells in GEX dataset, by celltype:")
+vgm[["GEX"]]$celltype <- droplevels(vgm[["GEX"]]$celltype)
+vgm[["GEX"]]$celltype.abbrev <- droplevels(vgm[["GEX"]]$celltype.abbrev)
+table(vgm[["GEX"]]$celltype.abbrev, vgm[["GEX"]]$VDJ_available)
+
+print("VDJ available for cells in GEX dataset, by cluster:")
+table(vgm[["GEX"]]$seurat_clusters, vgm[["GEX"]]$VDJ_available)
+```
+
+## Gene groups
+
+```{r gene_groups}
+vgm[["VDJ"]]$VJ_vgene_grp <- sub("-.*", "", vgm[["VDJ"]]$VJ_vgene)
+vgm[["VDJ"]]$VJ_vgene_grp <- sub("/.*", "", vgm[["VDJ"]]$VJ_vgene_grp)
+vgm[["VDJ"]]$VDJ_vgene_grp <- sub("-.*", "", vgm[["VDJ"]]$VDJ_vgene)
+vgm[["VDJ"]]$VDJ_jgene_locus <- sub("-.*", "", vgm[["VDJ"]]$VDJ_jgene)
+
+vgm <- transfer_vdj_to_gex(vgm, c("VJ_vgene_grp", "VDJ_vgene_grp",
+                                  "VDJ_jgene_locus", "VDJ_vgene",
+                                  "VDJ_dgene", "VDJ_jgene", "VDJ_cgene",
+                                  "VJ_vgene", "VJ_jgene", "VJ_cgene"))
+
+# transform all empty strings to NA
+for (col in c("VJ_vgene_grp", "VDJ_vgene_grp",
+              "VDJ_jgene_locus", "VDJ_vgene",
+              "VDJ_dgene", "VDJ_jgene", "VDJ_cgene",
+              "VJ_vgene", "VJ_jgene", "VJ_cgene")) {
+  vgm[["GEX"]]@meta.data[[col]] <- ifelse(vgm[["GEX"]]@meta.data[[col]] == "",
+                                           NA, vgm[["GEX"]]@meta.data[[col]])
+}
+stopifnot(all(vgm[["GEX"]]$barcode %in% vgm[["VDJ"]]$barcode) &
+          all(vgm[["VDJ"]]$barcode %in% vgm[["GEX"]]$barcode))
+stopifnot(length(unique(vgm[["GEX"]]$barcode)) == length(vgm[["GEX"]]$barcode))
+stopifnot(length(unique(vgm[["VDJ"]]$barcode)) == length(vgm[["VDJ"]]$barcode))
+
+```
+
+## Clonotypes
+
+```{r}
+vgm$VDJ$celltype_backup <- vgm$VDJ$celltype
+vgm$VDJ$celltype <- "B cell"
+clonotyping_output <- VDJ_clonotype_v3_w_enclone(VDJ = vgm$VDJ,
+                                        VDJ.directory = encode_input,
+                                        hierarchical = "single.chains",
+                                        clone.strategy = "enclone",
+                                        global.clonotype=T,
+                                        samples.to.combine = unique(vgm$VDJ$sample_id))
+
+# fix the clonotype output of the VDJ_clonotype_v3_w_enclone function
+#
+# for all duplicated barcodes
+# - barcode_duplicated_group: all lines with same barcode
+# for each barcode_duplicated_group:
+# - if the clonotype_frequency is 1 for all lines in the barcode_duplicated_group:
+#   then remove all lines, except the line with the lowest clonotype_id
+#   (lowest numeric suffix of the clonotype_id column)
+# - if there is one line with clonotype_frequency > 1 in the barcode_duplicated_group:
+#   then remove all lines, except that one
+# - if there are more than one lines with clonotype_frequency > 1 in the barcode_duplicated_group:
+#   keep only the lowest clonotype id; also, for each other clonotype id in that barcode_duplicated_group,
+#   change the clonotype_id of all lines outside of the barcode_duplicated_group with that clonotype_id
+#   to the lowest clonotype_id
+fix_enclone_clonotyping_output <- function(vdj_after) {
+  duplicated_barcodes <- vdj_after$barcode[duplicated(vdj_after$barcode)]
+  db_df <- subset(vdj_after, barcode %in% duplicated_barcodes)
+  # split duplicated_barcodes by barcode:
+  db_df_s <- split(db_df, db_df$barcode)
+  clonotype_to_rm = c()
+  # iterate over the db_df_s splits:
+  for (barcode_duplicated_group in db_df_s) {
+    # print barcode
+    if (all(barcode_duplicated_group$clonotype_frequency == 1)) {
+      lowest_clonotype_id <- paste0("clonotype", min(as.numeric(sub("clonotype", "", barcode_duplicated_group$clonotype_id))))
+      clonotype_to_rm <- c(clonotype_to_rm,
+                           barcode_duplicated_group$clonotype_id[barcode_duplicated_group$clonotype_id != lowest_clonotype_id])
+    } else {
+      # if there is a single line with clonotype_frequency > 1 in the barcode_duplicated_group:
+      if (sum(barcode_duplicated_group$clonotype_frequency > 1) == 1) {
+        clonotype_id_to_keep = barcode_duplicated_group$clonotype_id[barcode_duplicated_group$clonotype_frequency > 1]
+        clonotype_to_rm <- c(clonotype_to_rm,
+                             barcode_duplicated_group$clonotype_id[barcode_duplicated_group$clonotype_id != clonotype_id_to_keep])
+      } else {
+        # if there are more than one lines with clonotype_frequency > 1 in the barcode_duplicated_group:
+        # keep only the lowest clonotype id; also, for each other clonotype id in that barcode_duplicated_group,
+        # change the clonotype_id of all lines outside of the barcode_duplicated_group with that clonotype_id
+        # to the lowest clonotype_id
+      lowest_clonotype_id <- paste0("clonotype", min(as.numeric(sub("clonotype", "", barcode_duplicated_group$clonotype_id))))
+      clonotype_to_rm <- c(clonotype_to_rm,
+                           barcode_duplicated_group$clonotype_id[barcode_duplicated_group$clonotype_id != lowest_clonotype_id])
+        # for each clonotype_id, identify the barcodes of all lines OUTSIDE of the barcode_duplicated_group
+        # with that clonotype_id
+        for (other_clonotype_id in barcode_duplicated_group$clonotype_id) {
+          if (other_clonotype_id != lowest_clonotype_id) {
+            print(paste0("changing: ", other_clonotype_id))
+            barcodes_to_assign_to_clonotype_id <- vdj_after$barcode[vdj_after$clonotype_id == other_clonotype_id]
+            barcodes_to_assign_to_clonotype_id <-
+              barcodes_to_assign_to_clonotype_id[!barcodes_to_assign_to_clonotype_id %in% barcode_duplicated_group$barcode]
+            vdj_after$clonotype_id[vdj_after$barcode %in% barcodes_to_assign_to_clonotype_id] <- lowest_clonotype_id
+          }
+        }
+        print(clonotype_to_rm)
+      }
+    }
+  }
+  vdj_after <- vdj_after[!vdj_after$clonotype_id %in% clonotype_to_rm,]
+}
+
+vgm$VDJ <- fix_enclone_clonotyping_output(clonotyping_output)
+vgm$VDJ$celltype <- vgm$VDJ$celltype_backup
+vgm$VDJ$celltype_backup <- NULL
+```
+
+```{r}
+compute_clonotype_size_bins <- function(vgm) {
+  clonotype_size_bin <- sapply(vgm[["GEX"]]$clonotype_size, function(x) {
+    if (x == 1) {
+      "1"
+    } else if (x <= 5) {
+      "2-5"
+    } else if (x <= 20) {
+      "6-20"
+    } else {
+      ">20"
+    }
+  })
+
+  vgm[["GEX"]]$clonotype_size_bin <-
+    factor(clonotype_size_bin, levels = c("1", "2-5", "6-20", ">20"))
+  vgm <- transfer_gex_to_vdj(vgm, "clonotype_size_bin")
+  vgm
+}
+```
+
+Compute for each cell the size of the clonotype to which it belongs.
+
+```{r clonotype_size_vgm}
+vgm <- cells_clonotype_size(vgm)
+vgm <- compute_clonotype_size_bins(vgm)
+```
+
+Group clonotype sizes into bins for plotting and setup bin colors for plotting.
+
+```{r clonotype_size_bins_vgm}
+vgm$GEX@misc$clonotype_size_bin_cols <-
+  c("1" = "#e6e6e6", "2-5" = "#ac9393", "6-20" = "#fc8d59", ">20" = "#ff0000")
+```
+
+## Isotype colors
+
+```{r isotype_colors}
+vgm$GEX@misc$isotype_cols <-
+  c("IgA1" = "#3d58a7",
+    "IgA2" = "#f23325",
+    "IgD" = "#76c161",
+    "IgE" = "#e78ac3",
+    "IgG1" = "#9553a1",
+    "IgG2" = "#f7911e",
+    "IgG3" = "#010202",
+    "IgG4" = "#8da0cb",
+    "IgM" = "#942e28",
+    "undet." = "#7f7f7f")
+vgm$GEX@misc$igh_gene_cols <- vgm$GEX@misc$isotype_cols
+names(vgm$GEX@misc$igh_gene_cols) <- c("IGHA1", "IGHA2", "IGHD", "IGHE",
+                                       "IGHG1", "IGHG2", "IGHG3", "IGHG4",
+                                       "IGHM", "undet.")
+```
+
+## Saving Data
+
+```{r saving}
+saveRDS(vgm, file = paste0(var_dir, "vgm.rds"))
+```

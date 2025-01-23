@@ -1,0 +1,326 @@
+---
+title: "InDen B cells | BCR sequencing analysis | SHM analysis"
+author: "Giorgio Gonnella"
+date: "2024-10-14"
+output:
+  html_document:
+    theme: sandstone
+params:
+  pfx: "/srv/baia/"
+  libpath: "/home/giorgio/R-pkg-Seurat5/"
+  mixcr: "/home/giorgio/software/mambaforge/pkgs/mixcr-3.0.12-0/share/mixcr-3.0.12-0/"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+library(Platypus)
+library(ggplot2)
+library(dplyr)
+
+prj_root <- paste0(params$pfx, "inden/")
+analysis_root <- paste0(prj_root, "analysis-1/")
+
+input_step_dir <- paste0(analysis_root,
+                         "steps/113.0.P.B.BCR_analysis.platypus/")
+input_var_dir <- paste0(input_step_dir, "results/vars/")
+if (!dir.exists(input_var_dir)) {
+  stop("Input variable directory does not exist: ", input_var_dir)
+}
+
+this_step_dir <- paste0(analysis_root, "steps/113.0.V.B.BCR_results/")
+if (!dir.exists(this_step_dir)) {
+  stop("Current step directory does not exist: ", this_step_dir)
+}
+plots_dir <- paste0(this_step_dir, "results/plots/")
+tables_dir <- paste0(this_step_dir, "results/tables/")
+dir.create(plots_dir, showWarnings = F, recursive = T)
+dir.create(tables_dir, showWarnings = F, recursive = T)
+
+helpers_dir = paste0(prj_root, "helpers/")
+source(paste0(helpers_dir, "ggplot2_helpers.R"))
+source(paste0(helpers_dir, "platypus_helpers.R"))
+```
+
+## Load data
+
+```{r load_vgm}
+vgm_HL <- readRDS(file = paste0(input_var_dir, "vgm_HL.rds"))
+```
+
+# SHM analysis
+
+```{r}
+vgm_HL$VDJ$VDJ_SHM <- NULL
+vgm_HL$VDJ$VJ_SHM <- NULL
+files <- list.files(pattern = "^temp")
+file.remove(files)
+mixcr_out <- VDJ_call_MIXCR(
+    VDJ = vgm_HL$VDJ,
+    mixcr.directory = params$mixcr,
+    species = "hsa",  # or "mmu" for mouse
+    platypus.version = "v3",
+    operating.system = "Linux",
+    simplify = TRUE,
+    custom.cmd.call = "java -jar"
+)
+vgm_HL$VDJ <- mixcr_out
+```
+
+```{r}
+VDJ_SHM_boxplot <- function(vdj, group.by = "sample_id",
+                            point.size = 0.5, box.color = "black",
+                            dot.alpha = 0.2, group.colors = NULL) {
+    name <- NULL
+    group <- NULL
+    value <- NULL
+    VDJ_SHM <- NULL
+    VJ_SHM <- NULL
+    barcode <- NULL
+
+    to_plot <- vdj[, c(group.by, "barcode", "VDJ_SHM", "VJ_SHM")]
+    names(to_plot)[1] <- "group"
+    to_plot$VDJ_SHM[is.na(to_plot$VDJ_SHM)] <- 0
+    to_plot$VJ_SHM[is.na(to_plot$VJ_SHM)] <- 0
+    to_plot_long <- tidyr::pivot_longer(to_plot, cols = c(3:4))
+
+    # Check if group.colors is provided, else use default ggplot colors
+    if (is.null(group.colors)) {
+        group.colors <- ggplot2::scale_color_manual(values = NULL)
+    } else {
+        group.colors <- ggplot2::scale_color_manual(values = group.colors)
+    }
+
+    # Calculate summary statistics (median and IQR)
+    stats <- to_plot_long %>% dplyr::group_by(name, group) %>%
+        dplyr::summarise(median = stats::median(value), 
+                         IQR_lower = stats::quantile(value, 0.25), 
+                         IQR_upper = stats::quantile(value, 0.75))
+
+    # Create the boxplot with overlaid dots and remove legend
+    box_plot <- ggplot2::ggplot(to_plot_long, ggplot2::aes(color = group, 
+        y = value, x = group)) + 
+        ggplot2::geom_jitter(alpha = dot.alpha, width = 0.15, size = point.size) + 
+        ggplot2::geom_boxplot(aes(group = group), color = box.color,
+                              outlier.shape = NA, alpha = 0.4, width = 0.5) + 
+        group.colors + 
+        ggplot2::theme_bw() + cowplot::theme_cowplot() + 
+        ggplot2::theme(plot.title = ggplot2::element_text(hjust = 0.5)) + 
+        ggplot2::ylab("SHM") + 
+        ggplot2::xlab("") + 
+        ggplot2::ggtitle(label = paste0("SHM per ", group.by)) + 
+        ggplot2::theme(strip.background = ggplot2::element_rect(color = "white", fill = "white")) + 
+        ggplot2::theme(legend.position = "none") +  # Remove legend
+        ggplot2::facet_wrap(~name)
+
+    return(box_plot)
+}
+```
+
+```{r}
+compute_SHM_stats <- function(data, label, group_column, group1, group2) {
+  # Compute statistics for each metric separately
+  metrics <- c("VDJ_SHM", "VJ_SHM")
+  stats_list <- list()
+  
+  for (metric in metrics) {
+    # Dynamically create column names based on group1 and group2
+    mean_group1_col <- paste0("mean_", group1)
+    sd_group1_col <- paste0("sd_", group1)
+    median_group1_col <- paste0("median_", group1)
+    Q1_group1_col <- paste0("Q1_", group1)
+    Q3_group1_col <- paste0("Q3_", group1)
+    
+    mean_group2_col <- paste0("mean_", group2)
+    sd_group2_col <- paste0("sd_", group2)
+    median_group2_col <- paste0("median_", group2)
+    Q1_group2_col <- paste0("Q1_", group2)
+    Q3_group2_col <- paste0("Q3_", group2)
+    
+    # Calculate statistics for group1
+    stats_group1 <- data %>%
+      filter(get(group_column) == group1) %>%
+      summarise(
+        mean = mean(get(metric), na.rm = TRUE),
+        sd = sd(get(metric), na.rm = TRUE),
+        median = median(get(metric), na.rm = TRUE),
+        Q1 = quantile(get(metric), 0.25, na.rm = TRUE),
+        Q3 = quantile(get(metric), 0.75, na.rm = TRUE)
+      )
+    
+    # Calculate statistics for group2
+    stats_group2 <- data %>%
+      filter(get(group_column) == group2) %>%
+      summarise(
+        mean = mean(get(metric), na.rm = TRUE),
+        sd = sd(get(metric), na.rm = TRUE),
+        median = median(get(metric), na.rm = TRUE),
+        Q1 = quantile(get(metric), 0.25, na.rm = TRUE),
+        Q3 = quantile(get(metric), 0.75, na.rm = TRUE)
+      )
+    
+    # Perform Mann-Whitney U Test for the current metric
+    p_value <- wilcox.test(get(metric) ~ get(group_column), data = data)$p.value
+    
+    # Combine results into a tibble
+    stats <- tibble(
+      subset_label = label,
+      metric = metric,
+      !!mean_group1_col := stats_group1$mean,
+      !!sd_group1_col := stats_group1$sd,
+      !!median_group1_col := stats_group1$median,
+      !!Q1_group1_col := stats_group1$Q1,
+      !!Q3_group1_col := stats_group1$Q3,
+      !!mean_group2_col := stats_group2$mean,
+      !!sd_group2_col := stats_group2$sd,
+      !!median_group2_col := stats_group2$median,
+      !!Q1_group2_col := stats_group2$Q1,
+      !!Q3_group2_col := stats_group2$Q3,
+      p_value = p_value
+    )
+    
+    stats_list[[metric]] <- stats
+  }
+  
+  return(bind_rows(stats_list))
+}
+```
+
+```{r}
+vgm_HL <- transfer_gex_to_vdj(vgm_HL, "pruned.labels_singleR_fine")
+hpb_VDJ <- subset(vgm_HL$VDJ, pruned.labels_singleR_fine == 'Plasmablasts' & clinical_condition == 'Hospitalized')
+hpb_VDJ$celltype <- droplevels(hpb_VDJ$celltype)
+plot <- VDJ_SHM_boxplot(hpb_VDJ, group.by = "celltype",
+                        group.colors = c("Non-proliferating plasmablasts" = "red", "Proliferating plasmablasts" = "red")) + 
+  ggtitle("Hospitalized: Plasmablasts") +
+  scale_x_discrete(labels = c("Non-proliferating plasmablasts" = "Non-proliferating", "Proliferating plasmablasts" = "Proliferating"))
+fname <- paste0(plots_dir, "SHM_boxplot.H.Plasmablasts_pr_vs_nonpr.svg")
+ggsave(fname, plot, device = "svg", width = 5, height = 6)
+print(plot)
+
+stats <- compute_SHM_stats(hpb_VDJ, "Plasmablasts", "celltype", "Non-proliferating plasmablasts", "Proliferating plasmablasts")
+stats <- stats %>% mutate(adj_p_value = p.adjust(p_value, method = "BH"))
+write.table(stats,
+            file = paste0(tables_dir, "SHM_stats.H.Plasmablasts_pr_vs_nonpr.tsv"), row.names = FALSE)
+```
+
+```{r, fig.width=5, fig.height=6}
+clinical_conditions_stats_table <- tibble()
+
+# total
+plot <- VDJ_SHM_boxplot(vgm_HL$VDJ, group.by = "clinical_condition",
+                        group.colors = c("Subclinical" = "blue", "Hospitalized" = "red")) + 
+  ggtitle("All B cells") +
+  scale_x_discrete(labels = c("Subclinical" = "S", "Hospitalized" = "H")) +
+  ylim(0, 80)
+
+fname <- paste0(plots_dir, "SHM_boxplot.Total.svg")
+ggsave(fname, plot, device = "svg", width = 5, height = 6)
+print(plot)
+
+total_stats <- compute_SHM_stats(vgm_HL$VDJ, "Total", "clinical_condition", "Subclinical", "Hospitalized")
+clinical_conditions_stats_table <- bind_rows(clinical_conditions_stats_table, total_stats)
+
+# cell types
+vdj_subsets <- split(vgm_HL$VDJ, vgm_HL$VDJ$celltype)
+for (label in names(vdj_subsets)) {
+  subset_data <- vdj_subsets[[label]]
+  
+  plot <- VDJ_SHM_boxplot(vdj = subset_data, group.by = "clinical_condition", 
+                          group.colors = c("Subclinical" = "blue", "Hospitalized" = "red")) +
+    ggtitle(label) +
+    scale_x_discrete(labels = c("Subclinical" = "S", "Hospitalized" = "H")) +
+    ylim(0, 80)
+
+  s_label <- gsub(" ", "_", label)
+  s_label <- gsub("/", "_", s_label)
+  fname <- paste0(plots_dir, "SHM_boxplot.", s_label, ".svg")
+  ggsave(fname, plot, device = "svg", width = 5, height = 6)
+  print(plot)
+  
+  subset_stats <- compute_SHM_stats(subset_data, label, "clinical_condition", "Subclinical", "Hospitalized")
+  clinical_conditions_stats_table <- bind_rows(clinical_conditions_stats_table, subset_stats)
+}
+
+# Adjust p-values using the Benjamini-Hochberg (BH) method
+clinical_conditions_stats_table <- clinical_conditions_stats_table %>%
+  mutate(adj_p_value = p.adjust(p_value, method = "BH"))
+
+write.table(clinical_conditions_stats_table,
+            file = paste0(tables_dir, "SHM_stats.by_clinical_condition.tsv"), row.names = FALSE)
+```
+
+```{r, eval=F}
+SHM_plot_and_stats <- function(data, label, color_mapping, sample_renaming = NULL) {
+  if (!is.null(sample_renaming)) {
+    data <- data %>%
+      mutate(sample = recode(sample, !!!sample_renaming))
+    color_mapping <- color_mapping %>%
+      mutate(sample = recode(sample, !!!sample_renaming))
+  }
+  
+  plot <- VDJ_SHM_boxplot(vdj = data, 
+                          group.by = "sample",
+                          group.colors = setNames(color_mapping$color, color_mapping$sample)) +
+    ggtitle(label) +
+    ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 90, hjust = 1, size = 8))
+  
+  s_label <- gsub(" ", "_", label)
+  s_label <- gsub("/", "_", s_label)
+  fname <- paste0(plots_dir, "SHM_boxplot_by_sample.", s_label, ".svg")
+  ggsave(fname, plot, device = "svg", width = 5, height = 6)
+  print(plot)
+  
+  stats <- data %>%
+    tidyr::pivot_longer(cols = c("VDJ_SHM", "VJ_SHM")) %>%
+    group_by(name, sample) %>%
+    summarise(n = n(),
+              mean = mean(value, na.rm = TRUE),
+              sd = sd(value, na.rm = TRUE),
+              se = sd / sqrt(n()),
+              median = median(value, na.rm = TRUE),
+              Q1 = quantile(value, 0.25, na.rm = TRUE),
+              Q3 = quantile(value, 0.75, na.rm = TRUE))
+  
+  return(stats)
+}
+
+# Initialize the stats table
+sample_stats <- list()
+
+# Prepare the sample ordering and color mapping
+sample_order <- vgm_HL$GEX@misc$sample_cond_table %>%
+  arrange(desc(clinical_condition), sample) %>%
+  mutate(sample = factor(sample, levels = sample))
+
+color_mapping <- vgm_HL$GEX@misc$sample_cond_table %>%
+  mutate(color = ifelse(clinical_condition == "Subclinical", "blue", "red")) %>%
+  select(sample, color)
+
+vdj <- vgm_HL$VDJ %>%
+  mutate(sample = factor(sample, levels = sample_order$sample))
+
+vdj_subsets_fine <- split(vdj, vdj$celltype)
+
+# Compute and plot for "Plasmablasts" from "celltype"
+for (celltype in names(vdj_subsets_fine)) {
+  celltype_data <- vdj_subsets_fine[[celltype]]
+  celltype_stats <- SHM_plot_and_stats(celltype_data, celltype, color_mapping)
+  sample_stats[[celltype]] <- celltype_stats
+}
+
+# Combine all the statistics into a final table
+sample_stats_table <- bind_rows(sample_stats, .id = "subset_label")
+
+print(sample_stats_table, n = Inf)
+
+# Save the final stats table
+write.table(sample_stats_table, file = paste0(tables_dir, "SHM_stats.by_sample.tsv"), row.names = FALSE)
+
+```
+
+## Session Info
+
+```{r}
+sessionInfo()
+```
+
