@@ -45,7 +45,7 @@ so <- readRDS(file = paste0(input_var_dir, "so_w_deseq.rds"))
 celltypes <- setdiff(names(so@misc$de$pval_filt), "Total")
 de <- list()
 for (celltype in celltypes) {
-  ct_results = so@misc$de$pval_filt[[celltype]] 
+  ct_results = so@misc$de$pval_filt[[celltype]]
   if (nrow(ct_results) > 0) {
     de[[celltype]] <- rownames(ct_results)
   }
@@ -72,7 +72,8 @@ for (celltype in unique(so$pruned.labels_singleR_fine.mod)) {
   plot <- GEX_dotplot(ct_sub, "clinical_condition", de[[celltype]],
                        max_expr = max_expr, title = celltype)
   print(plot)
-  fname <- paste0(plots_outdir, "B.de_genes_dotplot.", celltype_sanitized, ".svg")
+  fname <- paste0(plots_outdir, "B.de_genes_dotplot.",
+                  celltype_sanitized, ".svg")
   ggsave(fname, plot = plot, device = "svg")
 }
 ```
