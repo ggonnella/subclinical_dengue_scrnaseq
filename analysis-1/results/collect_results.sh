@@ -99,19 +99,19 @@ function fig6 {
     Fig6/elements/Fig6D.svg
   cp $STEPSDIR/105.0.V.B.splitted_plasmablasts/results/plots/umap.by_cond.phase.svg \
     Fig6/elements/Fig6E.svg
-  cp $STEPSDIR/110.0.V.B.de_results/results/plots/dotplots/B.de_genes_dotplot.Naive_B_cells.svg \
+  cp $STEPSDIR/107.0.V.B.de_results/results/plots/dotplots/B.de_genes_dotplot.Naive_B_cells.svg \
     Fig6/elements/Fig6F.1.svg
-  cp $STEPSDIR/110.0.V.B.de_results/results/plots/dotplots/B.de_genes_dotplot.Non-switched_memory_B_cells.svg \
+  cp $STEPSDIR/107.0.V.B.de_results/results/plots/dotplots/B.de_genes_dotplot.Non-switched_memory_B_cells.svg \
     Fig6/elements/Fig6F.2.svg
-  cp $STEPSDIR/110.0.V.B.de_results/results/plots/dotplots/B.de_genes_dotplot.Switched_memory_B_cells.svg \
+  cp $STEPSDIR/107.0.V.B.de_results/results/plots/dotplots/B.de_genes_dotplot.Switched_memory_B_cells.svg \
     Fig6/elements/Fig6F.3.svg
-  cp $STEPSDIR/110.0.V.B.de_results/results/plots/dotplots/B.de_genes_dotplot.Plasmablasts.svg \
+  cp $STEPSDIR/107.0.V.B.de_results/results/plots/dotplots/B.de_genes_dotplot.Plasmablasts.svg \
     Fig6/elements/Fig6F.4.svg
-  cp $STEPSDIR/110.0.V.B.de_results/results/plots/dotplots/B.de_genes_dotplot.Proliferating_plasmablasts.svg \
+  cp $STEPSDIR/107.0.V.B.de_results/results/plots/dotplots/B.de_genes_dotplot.Proliferating_plasmablasts.svg \
     Fig6/elements/Fig6F.5.svg
-  cp $STEPSDIR/110.0.V.B.de_results/results/plots/dotplots/B.de_genes_dotplot.Non-proliferating_plasmablasts.svg \
+  cp $STEPSDIR/107.0.V.B.de_results/results/plots/dotplots/B.de_genes_dotplot.Non-proliferating_plasmablasts.svg \
     Fig6/elements/Fig6F.6.svg
-  cp $STEPSDIR/110.0.V.B.de_results/results/plots/dotplots/B.de_genes_dotplot.Exhausted_B_cells.svg \
+  cp $STEPSDIR/107.0.V.B.de_results/results/plots/dotplots/B.de_genes_dotplot.Exhausted_B_cells.svg \
     Fig6/elements/Fig6F.7.svg
 }
 
