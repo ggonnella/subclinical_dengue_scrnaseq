@@ -21,7 +21,7 @@ library(scProportionTest)
 prj_root <- paste0(params$pfx, "inden/")
 analysis_root <- paste0(prj_root, "analysis-1/")
 
-this_step_dir <- paste0(analysis_root, "steps/007.0.P.T.integration.harmony/")
+this_step_dir <- paste0(analysis_root, "steps/004.0.P.T.integration.harmony/")
 if (!dir.exists(this_step_dir)) {
   stop("Current step directory does not exist: ", this_step_dir)
 }

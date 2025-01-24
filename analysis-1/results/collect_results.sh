@@ -11,7 +11,7 @@ function fig1 {
   mkdir -p Fig1/elements
   cp $STEPSDIR/008.0.V.T.splitted_CD8EM/results/plots/umap.by_cond.singleR_fine.mod.svg \
     Fig1/elements/Fig1B.svg
-  cp $STEPSDIR/007.0.V.T.integrated/results/plots/singleR_proportion_test.svg \
+  cp $STEPSDIR/004.0.V.T.integrated/results/plots/singleR_proportion_test.svg \
     Fig1/elements/Fig1C.svg
   cp $STEPSDIR/008.0.V.T.splitted_CD8EM/results/plots/umap.by_cond.Terminal_effector_CD4_T_cells.svg \
     Fig1/elements/Fig1D.svg

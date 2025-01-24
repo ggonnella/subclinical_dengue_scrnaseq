@@ -26,7 +26,7 @@ library(qualpalr)
 prj_root <- paste0(params$pfx, "inden/")
 analysis_root <- paste0(prj_root, "analysis-1/")
 
-input_step_dir <- paste0(analysis_root, "steps/007.0.P.T.integration.harmony/")
+input_step_dir <- paste0(analysis_root, "steps/004.0.P.T.integration.harmony/")
 input_var_dir <- paste0(input_step_dir, "results/vars/")
 if (!dir.exists(input_var_dir)) {
   stop("Input variable directory does not exist: ", input_var_dir)
