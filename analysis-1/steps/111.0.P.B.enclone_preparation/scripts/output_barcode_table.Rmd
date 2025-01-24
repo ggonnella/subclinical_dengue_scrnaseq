@@ -25,7 +25,7 @@ if (!dir.exists(input_var_dir)) {
   stop("Input variable directory does not exist: ", input_var_dir)
 }
 
-this_step_dir <- paste0(analysis_root, "steps/114.0.P.B.enclone_preparation/")
+this_step_dir <- paste0(analysis_root, "steps/111.0.P.B.enclone_preparation/")
 if (!dir.exists(this_step_dir)) {
   stop("Current step directory does not exist: ", this_step_dir)
 }

@@ -133,9 +133,9 @@ function fig7 {
   # TODO: S left H right
   cp $STEPSDIR/110.0.V.B.BCR_results/results/plots/heavy_chain_Cgene_group_Exhausted_B_cells.svg \
     Fig7/elements/Fig7D.3.svg
-  cp $STEPSDIR/114.0.V.B.enclone_plots/results/plots/Non_proliferating_plasmablasts.Hospitalized.svg \
+  cp $STEPSDIR/111.0.V.B.enclone_plots/results/plots/Non_proliferating_plasmablasts.Hospitalized.svg \
     Fig7/elements/Fig7E.1.svg
-  cp $STEPSDIR/114.0.V.B.enclone_plots/results/plots/Proliferating_plasmablasts.Hospitalized.svg \
+  cp $STEPSDIR/111.0.V.B.enclone_plots/results/plots/Proliferating_plasmablasts.Hospitalized.svg \
     Fig7/elements/Fig7E.2.svg
   cp $STEPSDIR/110.0.V.B.BCR_results/results/plots/SHM_boxplot.H.Plasmablasts_pr_vs_nonpr.svg \
     Fig7/elements/Fig7F.svg

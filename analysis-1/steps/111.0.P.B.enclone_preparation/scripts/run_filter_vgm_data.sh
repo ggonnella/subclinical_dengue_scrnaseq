@@ -3,7 +3,7 @@
 PARAMS_PFX="/srv/baia"
 PRJ_ROOT="$PARAMS_PFX/inden"
 ANALYSIS_ROOT="$PRJ_ROOT/analysis-1"
-INPUT_STEP_DIR="$ANALYSIS_ROOT/steps/114.0.P.B.enclone_preparation"
+INPUT_STEP_DIR="$ANALYSIS_ROOT/steps/111.0.P.B.enclone_preparation"
 INPUT_TABLES_DIR="$INPUT_STEP_DIR/results/tables"
 if [ ! -d "$INPUT_TABLES_DIR" ]; then
   echo "Input tables directory does not exist: $INPUT_TABLES_DIR"
@@ -16,7 +16,7 @@ for file in vgm.tsv; do
   fi
 done
 
-THIS_STEP_DIR="$ANALYSIS_ROOT/steps/114.0.P.B.enclone_preparation"
+THIS_STEP_DIR="$ANALYSIS_ROOT/steps/111.0.P.B.enclone_preparation"
 if [ ! -d "$THIS_STEP_DIR" ]; then
   echo "Current step directory does not exist: $THIS_STEP_DIR"
   exit 1

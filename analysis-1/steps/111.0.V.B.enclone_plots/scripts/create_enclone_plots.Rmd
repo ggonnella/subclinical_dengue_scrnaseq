@@ -19,7 +19,7 @@ library(Platypus)
 prj_root <- paste0(params$pfx, "inden/")
 analysis_root <- paste0(prj_root, "analysis-1/")
 
-input_step_dir <- paste0(analysis_root, "steps/114.0.P.B.enclone_preparation/")
+input_step_dir <- paste0(analysis_root, "steps/111.0.P.B.enclone_preparation/")
 input_json_dir <- paste0(input_step_dir, "results/json/")
 if (!dir.exists(input_json_dir)) {
   stop("Input JSON directory does not exist: ", input_json_dir)
@@ -33,7 +33,7 @@ if (!file.exists(input_tsvfile)) {
   stop("Input TSV file does not exist: ", input_tsvfile)
 }
 
-this_step_dir <- paste0(analysis_root, "steps/114.0.V.B.enclone_plots/")
+this_step_dir <- paste0(analysis_root, "steps/111.0.V.B.enclone_plots/")
 if (!dir.exists(this_step_dir)) {
   stop("Current step directory does not exist: ", this_step_dir)
 }
