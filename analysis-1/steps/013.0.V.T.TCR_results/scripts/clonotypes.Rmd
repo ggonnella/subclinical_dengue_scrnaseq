@@ -327,58 +327,6 @@ shared_clonotypes <- VDJ_overlap_sorted_heatmap(vgm$VDJ, c("clonotype_id"),
 print(shared_clonotypes[[1]])
 ```
 
-## Shared CD3s sequences
-
-```{r}
-vj_cdr3s_aa_oh <- VDJ_overlap_sorted_heatmap(vgm_HL$VDJ, c("VJ_cdr3s_aa"),
-                                             grouping.column = "sample_name",
-                                             group.by = "clinical_condition",
-                                             axis.label.size = 12,
-                                             pvalues.label.size = 6)
-plt <- vj_cdr3s_aa_oh[[1]]
-fname <- paste0(plots_dir, "VJ_cdr3s_aa.overlap.svg")
-ggsave(fname, plt)
-print(plt)
-```
-
-```{r}
-vdj_cdr3s_aa_oh <- VDJ_overlap_sorted_heatmap(vgm_HL$VDJ, c("VDJ_cdr3s_aa"),
-                                              grouping.column = "sample_name",
-                                              group.by = "clinical_condition",
-                                              axis.label.size = 12,
-                                              pvalues.label.size = 6)
-plt <- vdj_cdr3s_aa_oh[[1]]
-fname <- paste0(plots_dir, "VDJ_cdr3s_aa.overlap.svg")
-ggsave(fname, plt)
-print(plt)
-```
-
-```{r}
-vdj_vj_cdr3s_aa_oh <- VDJ_overlap_sorted_heatmap(vgm_HL$VDJ,
-                                          c("VDJ_cdr3s_aa", "VJ_cdr3s_aa"),
-                                          grouping.column = "sample_name",
-                                          group.by = "clinical_condition",
-                                          axis.label.size = 12,
-                                          pvalues.label.size = 6)
-plt <- vdj_vj_cdr3s_aa_oh[[1]]
-fname <- paste0(plots_dir, "VDJ_VJ_cdr3s_aa.overlap.svg")
-ggsave(fname, plt)
-print(plt)
-```
-
-```{r}
-# more information on the only shared sequence
-shared <- vdj_vj_cdr3s_aa_oh[[2]][1,]
-cdr3s <- str_split(shared$items.overlapping, '/')
-vdj_cdr3s <- cdr3s[[1]][[1]]
-vj_cdr3s <- cdr3s[[1]][[2]]
-shared_vdj <- subset(vgm_HL$VDJ, VDJ_cdr3s_aa == vdj_cdr3s)
-shared_both <- subset(shared_vdj, VJ_cdr3s_aa == vj_cdr3s)
-print(vdj_cdr3s)
-print(vj_cdr3s)
-print(table(shared_both$celltype, shared_both$sample_name))
-```
-
 ### Clonotypes shared by 2 or more samples
 
 ```{r}

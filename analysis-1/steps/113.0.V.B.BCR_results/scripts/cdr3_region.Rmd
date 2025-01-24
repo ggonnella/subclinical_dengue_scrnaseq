@@ -238,7 +238,7 @@ tab_plt <- most_freq_cdr3s_aa_plot(vgm[["VDJ"]], color_by = "celltype",
                                   cols = vgm$GEX@misc$fctype_mod_cols,
                               color_lbl = "Cell type",
                               group_col = "clinical_condition")
-filename <- paste0(plots_dir, "most_freq_CDR3s_aa.vdj.pdf")
+filename <- paste0(plots_dir, "most_freq_CDR3s_aa.vdj.svg")
 ggsave(filename, tab_plt$plot, width = 10, height = 5)
 tab_plt$plot
 ```
@@ -249,16 +249,18 @@ tab_plt <- most_freq_cdr3s_aa_plot(vgm_HL[["VDJ"]], color_by = "celltype",
                               color_lbl = "Cell type",
                               group_col = "clinical_condition",
                               use.VJ = TRUE)
-filename <- paste0(plots_dir, "most_freq_CDR3s_aa.vj.pdf")
+filename <- paste0(plots_dir, "most_freq_CDR3s_aa.vj.svg")
 ggsave(filename, tab_plt$plot, width = 10, height = 5)
 ```
 
-## Colored by sample ID
+## Colored by sample
 
 ```{r}
 most_freq <- most_freq_cdr3s_aa_plot(vgm$VDJ, color_lbl = "Sample ID",
-                                    cols = vgm$GEX@misc$sample_cols)
-fname <- paste0(plots_dir, "B.most_freq_clonotypes.VDJ.by_sample.svg")
+                                     color_by = "sample_name",
+                                     cols = vgm$GEX@misc$sample_name_cols,
+                                     group_col = "clinical_condition")
+fname <- paste0(plots_dir, "B.most_freq_CDR3s_aa.VDJ.by_sample.svg")
 ggsave(fname, most_freq$plot, device = "svg", width=3, height=2.6, scale=1.5)
 print(most_freq$plot)
 
@@ -288,7 +290,7 @@ for (celltype in unique(vgm[["VDJ"]]$celltype.abbrev)) {
           panel.background = element_blank())
 
   celltype_sanitized <- gsub("[^[:alnum:]]", "_", celltype)
-  fname <- paste0(plots_dir, "B.most_freq_clonotypes.VDJ.by_sample.",
+  fname <- paste0(plots_dir, "B.most_freq_CDR3s.VDJ.by_sample.",
                   celltype_sanitized, ".svg")
   ggsave(fname, most_freq$plot, device = "svg",
          width=4.5, height=2.6, scale=1.5)
