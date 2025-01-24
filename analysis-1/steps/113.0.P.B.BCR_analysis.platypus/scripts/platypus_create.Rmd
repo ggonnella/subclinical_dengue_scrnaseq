@@ -23,7 +23,7 @@ analysis_root <- paste0(prj_root, "analysis-1/")
 vdj_counts_pfx1 <- paste0(prj_root, "data/counts/")
 vdj_counts_pfx2 <- paste0(prj_root, "data/counts2/")
 
-input_step_dir <- paste0(analysis_root, "steps/108.0.P.B.split_plasmablasts/")
+input_step_dir <- paste0(analysis_root, "steps/105.0.P.B.split_plasmablasts/")
 input_var_dir <- paste0(input_step_dir, "results/vars/")
 if (!dir.exists(input_var_dir)) {
   stop("Input variable directory does not exist: ", input_var_dir)

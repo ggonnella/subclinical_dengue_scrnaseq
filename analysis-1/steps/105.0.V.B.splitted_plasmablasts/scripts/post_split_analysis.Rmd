@@ -20,13 +20,13 @@ library(ggplot2)
 prj_root <- paste0(params$pfx, "inden/")
 analysis_root <- paste0(prj_root, "analysis-1/")
 
-input_step_dir <- paste0(analysis_root, "steps/108.0.P.B.split_plasmablasts/")
+input_step_dir <- paste0(analysis_root, "steps/105.0.P.B.split_plasmablasts/")
 input_var_dir <- paste0(input_step_dir, "results/vars/")
 if (!dir.exists(input_var_dir)) {
   stop("Input variable directory does not exist: ", input_var_dir)
 }
 
-this_step_dir <- paste0(analysis_root, "steps/108.0.V.B.splitted_plasmablasts/")
+this_step_dir <- paste0(analysis_root, "steps/105.0.V.B.splitted_plasmablasts/")
 if (!dir.exists(this_step_dir)) {
   stop("Current step directory does not exist: ", this_step_dir)
 }

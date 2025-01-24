@@ -91,13 +91,13 @@ function fig6 {
   mkdir -p Fig6/elements
   cp $STEPSDIR/104.0.V.B.integrated/results/plots/umap.celltypes.svg \
     Fig6/elements/Fig6A.svg
-  cp $STEPSDIR/108.0.V.B.splitted_plasmablasts/results/plots/singleR_proportion_test.svg \
+  cp $STEPSDIR/105.0.V.B.splitted_plasmablasts/results/plots/singleR_proportion_test.svg \
     Fig6/elements/Fig6B.svg
-  cp $STEPSDIR/108.0.V.B.splitted_plasmablasts/results/plots/umap.by_cond.clustering_res_0.4.svg \
+  cp $STEPSDIR/105.0.V.B.splitted_plasmablasts/results/plots/umap.by_cond.clustering_res_0.4.svg \
     Fig6/elements/Fig6C.svg
-  cp $STEPSDIR/108.0.V.B.splitted_plasmablasts/results/plots/phase_marker.MKI67.svg \
+  cp $STEPSDIR/105.0.V.B.splitted_plasmablasts/results/plots/phase_marker.MKI67.svg \
     Fig6/elements/Fig6D.svg
-  cp $STEPSDIR/108.0.V.B.splitted_plasmablasts/results/plots/umap.by_cond.phase.svg \
+  cp $STEPSDIR/105.0.V.B.splitted_plasmablasts/results/plots/umap.by_cond.phase.svg \
     Fig6/elements/Fig6E.svg
   cp $STEPSDIR/110.0.V.B.de_results/results/plots/dotplots/B.de_genes_dotplot.Naive_B_cells.svg \
     Fig6/elements/Fig6F.1.svg
