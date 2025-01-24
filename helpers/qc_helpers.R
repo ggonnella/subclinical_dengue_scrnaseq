@@ -70,7 +70,7 @@ test_cell_cycle_effect <- function(so, so_label, s_genes, g2m_genes,
 
 compute_percent_mito <- function(so, mitoGenes){
   percent.mito <-
-    Matrix::colSums(so@assays$RNA$counts[\
+    Matrix::colSums(so@assays$RNA$counts[
                       rownames(so@assays$RNA$counts) %in% mitoGenes,]) /
                     Matrix::colSums(so@assays$RNA$counts)
   so@meta.data$percent.mito <- percent.mito
@@ -80,7 +80,7 @@ compute_percent_mito <- function(so, mitoGenes){
 }
 
 plot_basic_qc <- function(so, title,
-                          colors <- c("green1", "blue1", "orange1","red1",
+                          colors = c("green1", "blue1", "orange1","red1"),
                           alpha = .6) {
   p.pMito <- ggplot(so@meta.data,
                     aes(x = levels(factor(orig.ident)), y = percent.mito)) +
@@ -130,7 +130,7 @@ plot_higest_expressed <- function(so, nfeat2plot = 50,
                                   ylab_txt = "counts",
                                   colors = colorRampPalette(
                                         rev(pal_futurama("planetexpress"
-                                                         )(12)))(nfeat2plot) {
+                                                         )(12)))(nfeat2plot)) {
   mat_exp <- as.matrix(so@assays$RNA$counts)
 
   # calculate sum of expression (sum of UMI)
