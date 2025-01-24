@@ -116,9 +116,7 @@ so$percent.mito.cl <- droplevels(so$percent.mito.cl)
 mat_exp <- as.data.frame(t(as.matrix(so@assays$RNA$counts)))
 bctokeep <- rownames(mat_exp)[!(mat_exp$CD3E > 0 |
                                 mat_exp$CD3D > 0 |
-                                mat_exp$CD3G > 0 |
-                                mat_exp$CD8A > 0 |
-                                mat_exp$CD8B > 0)]
+                                mat_exp$CD3G > 0)]
 so <- subset(so, cells = bctokeep)
 ```
 

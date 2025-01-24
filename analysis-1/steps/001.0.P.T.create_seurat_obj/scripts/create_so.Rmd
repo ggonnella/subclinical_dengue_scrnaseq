@@ -124,7 +124,8 @@ so@meta.data <- so@meta.data[,c("orig.ident","nCount_RNA","nFeature_RNA",
 # VDJ info
 
 ```{r fetching_vdj_info}
-vdj_info <- read.csv(file = paste0(sample_data_dir,
+vdj_info <- read.csv(file = paste0(sample_data_dir, "/per_sample_outs",
+                                   params$sample, "/vdj_t/",
                                    "filtered_contig_annotations.csv"),
                      stringsAsFactors = FALSE)
 so$has_prod_vdj <- rownames(so@meta.data) %in% vdj_info$barcode
