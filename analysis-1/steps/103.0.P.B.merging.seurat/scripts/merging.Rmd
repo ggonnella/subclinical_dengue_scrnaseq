@@ -17,14 +17,10 @@ library(Seurat)
 prj_root <- paste0(params$pfx, "inden/")
 analysis_root <- paste0(prj_root, "analysis-1/")
 
-# TODO: change this, integrating the steps before to the analysis
-input_var_dir_prevanalysis1 <- paste0(prj_root, "data/bcells1/")
-input_var_dir_prevanalysis2 <- paste0(prj_root, "data/bcells2/")
-if (!dir.exists(input_var_dir_prevanalysis1)) {
-  stop("Input variable directory does not exist: ", input_var_dir_prevanalysis1)
-}
-if (!dir.exists(input_var_dir_prevanalysis2)) {
-  stop("Input variable directory does not exist: ", input_var_dir_prevanalysis2)
+prev_step_dir <- paste0(analysis_root, "steps/102.0.P.B.qc_filter/")
+input_var_dir <- paste0(prev_step_dir, "results/vars/")
+if (!dir.exists(input_var_dir)) {
+  stop("Input variable directory does not exist: ", input_var_dir)
 }
 
 this_step_dir <- paste0(analysis_root, "steps/103.0.P.B.merging.seurat/")
@@ -48,16 +44,13 @@ object.
 The files are imported as a list of Seurat objects.
 
 ```{r importing, echo=TRUE}
-bcells_files1 <-
-  list.files(path = input_var_dir_prevanalysis1, pattern = "_Bcells.Rdata")
-bcells_ls1 <- sapply(bcells_files1,
-            function(x) mget(load(paste0(input_var_dir_prevanalysis1, x))))
-bcells_files2 <- list.files(path = input_var_dir_prevanalysis2, pattern = "_bcells.Rdata")
-bcells_ls2 <-
-  sapply(bcells_files2, function(x) mget(load(paste0(input_var_dir_prevanalysis2, x))))
-bcells_ls <- c(bcells_ls1, bcells_ls2)
-rm(list = (c("bcells_files1", "bcells_files2", "bcells_ls1", "bcells_ls2")))
-names(bcells_ls) <- sapply(bcells_ls, function(x) x$orig.ident[[1]])
+bcells_files <- list.files(path = input_var_dir,
+                           pattern = "_so_filtered.rds")
+# TODO: check that mget is not needed
+bcells_ls <- sapply(bcells_files, function(x)
+                    readRDS(paste0(input_var_dir, x)))
+names(bcells_ls) <- gsub("_so_filtered.rds", "", bcells_files)
+rm(bcells_files)
 ```
 
 ## Filtering
@@ -65,7 +58,7 @@ names(bcells_ls) <- sapply(bcells_ls, function(x) x$orig.ident[[1]])
 Sample 10 is removed because of the low number of cells.
 
 ```{r datasets_filtering}
-exclude <- c("TC_SC03_S10B_so")
+exclude <- c("sample_10_B")
 keep <- setdiff(names(bcells_ls), exclude)
 bcells_ls <- bcells_ls[keep]
 ```
@@ -85,13 +78,14 @@ The Seurat objects for the individual samples are merged
 into one Seurat object, using the `merge()` function.
 
 ```{r merging, echo=TRUE}
-so <- merge(x = bcells_ls[[1]], y = bcells_ls[-1], project = "so")
+so <- merge(x = bcells_ls[[1]], y = bcells_ls[-1], project = "bcells")
 rm(list = (c("bcells_ls")))
 ```
 
 The samples in the merged object are ordered by sample number.
 
 ```{r sample_ordering, echo=TRUE}
+# TODO: change this part to reflect name sample_X_B
 so$orig.ident[
       so$orig.ident == "sample_15_B_so"] <- "TC_SC03_S15B_so"
 so$orig.ident[
@@ -113,6 +107,7 @@ so$sample <- sub(".*(S\\d+B).*", "\\1", so$orig.ident)
 Add clinical condition metadata.
 
 ```{r add_clinical_condition, echo=TRUE}
+# TODO: change this part to reflect name sample_X_B
 conditions <- c("Hospitalized", "Subclinical")
 hosp_n = c("1", "2", "3", "5", "6", "7", "15", "16")
 so$clinical_condition <-
