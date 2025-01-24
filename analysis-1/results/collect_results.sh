@@ -118,32 +118,32 @@ function fig6 {
 function fig7 {
   mkdir -p Fig7/elements
   # TODO: vertical order of the dots, can it be done automatically?
-  cp $STEPSDIR/113.0.V.B.BCR_results/results/plots/B.clonotype_size_umapharm.svg \
+  cp $STEPSDIR/110.0.V.B.BCR_results/results/plots/B.clonotype_size_umapharm.svg \
     Fig7/elements/Fig7A.svg
-  cp $STEPSDIR/113.0.V.B.BCR_results/results/plots/B.celltypes_clonotypes_barplots.svg \
+  cp $STEPSDIR/110.0.V.B.BCR_results/results/plots/B.celltypes_clonotypes_barplots.svg \
     Fig7/elements/Fig7B.svg
-  cp $STEPSDIR/113.0.V.B.BCR_results/results/plots/isotype_umap.svg \
+  cp $STEPSDIR/110.0.V.B.BCR_results/results/plots/isotype_umap.svg \
     Fig7/elements/Fig7C.svg
   # TODO: S left H right
-  cp $STEPSDIR/113.0.V.B.BCR_results/results/plots/heavy_chain_Cgene_group_Switched_memory_B_cells.svg \
+  cp $STEPSDIR/110.0.V.B.BCR_results/results/plots/heavy_chain_Cgene_group_Switched_memory_B_cells.svg \
     Fig7/elements/Fig7D.1.svg
   # TODO: S left H right
-  cp $STEPSDIR/113.0.V.B.BCR_results/results/plots/heavy_chain_Cgene_group_Plasmablasts.svg \
+  cp $STEPSDIR/110.0.V.B.BCR_results/results/plots/heavy_chain_Cgene_group_Plasmablasts.svg \
     Fig7/elements/Fig7D.2.svg
   # TODO: S left H right
-  cp $STEPSDIR/113.0.V.B.BCR_results/results/plots/heavy_chain_Cgene_group_Exhausted_B_cells.svg \
+  cp $STEPSDIR/110.0.V.B.BCR_results/results/plots/heavy_chain_Cgene_group_Exhausted_B_cells.svg \
     Fig7/elements/Fig7D.3.svg
   cp $STEPSDIR/114.0.V.B.enclone_plots/results/plots/Non_proliferating_plasmablasts.Hospitalized.svg \
     Fig7/elements/Fig7E.1.svg
   cp $STEPSDIR/114.0.V.B.enclone_plots/results/plots/Proliferating_plasmablasts.Hospitalized.svg \
     Fig7/elements/Fig7E.2.svg
-  cp $STEPSDIR/113.0.V.B.BCR_results/results/plots/SHM_boxplot.H.Plasmablasts_pr_vs_nonpr.svg \
+  cp $STEPSDIR/110.0.V.B.BCR_results/results/plots/SHM_boxplot.H.Plasmablasts_pr_vs_nonpr.svg \
     Fig7/elements/Fig7F.svg
   # TODO: check differences in signif
-  cp $STEPSDIR/113.0.V.B.BCR_results/results/plots/B.VH_VL_pairings.HPb.svg \
+  cp $STEPSDIR/110.0.V.B.BCR_results/results/plots/B.VH_VL_pairings.HPb.svg \
     Fig7/elements/Fig7G.svg
   # TODO: PDF: fix
-  cp $STEPSDIR/113.0.V.B.BCR_results/results/plots/most_freq_CDR3s_aa.vdj.pdf \
+  cp $STEPSDIR/110.0.V.B.BCR_results/results/plots/most_freq_CDR3s_aa.vdj.pdf \
     Fig7/elements/Fig7H.svg
 }
 
@@ -196,12 +196,11 @@ function figS6 {
 
 function figS7 {
   mkdir -p FigS7/elements
-  # source step: 113
-  cp $STEPSDIR/113.0.V.B.BCR_results/results/plots/SHM_boxplot.Non-switched_memory_B_cells.svg \
+  cp $STEPSDIR/110.0.V.B.BCR_results/results/plots/SHM_boxplot.Non-switched_memory_B_cells.svg \
     FigS7/elements/FigS7A.1.svg
-  cp $STEPSDIR/113.0.V.B.BCR_results/results/plots/SHM_boxplot.Exhausted_B_cells.svg \
+  cp $STEPSDIR/110.0.V.B.BCR_results/results/plots/SHM_boxplot.Exhausted_B_cells.svg \
     FigS7/elements/FigS7A.2.svg
-  cp $STEPSDIR/113.0.V.B.BCR_results/results/plots/SHM_boxplot.Switched_memory_B_cells.svg \
+  cp $STEPSDIR/110.0.V.B.BCR_results/results/plots/SHM_boxplot.Switched_memory_B_cells.svg \
     FigS7/elements/FigS7A.3.svg
   # TODO: missing
     FigS7/elements/FigS7B.svg

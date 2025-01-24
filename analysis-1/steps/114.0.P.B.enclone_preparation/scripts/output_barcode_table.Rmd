@@ -19,7 +19,7 @@ library(Platypus)
 prj_root <- paste0(params$pfx, "inden/")
 analysis_root <- paste0(prj_root, "analysis-1/")
 
-input_step_dir <- paste0(analysis_root, "steps/113.0.P.B.BCR_analysis.platypus/")
+input_step_dir <- paste0(analysis_root, "steps/110.0.P.B.BCR_analysis.platypus/")
 input_var_dir <- paste0(input_step_dir, "results/vars/")
 if (!dir.exists(input_var_dir)) {
   stop("Input variable directory does not exist: ", input_var_dir)
