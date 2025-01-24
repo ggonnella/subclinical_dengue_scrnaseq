@@ -162,6 +162,9 @@ so@misc$sample_cols <-
   colorRampPalette(brewer.pal(8, name = "Accent"))(
                   length(unique(so$sample)))
 names(so@misc$sample_cols) <- levels(so$sample)
+# switch colors 1-5 to colors 6-11, to match the changed order of samples
+so@misc$sample_cols <- so@misc$sample_cols[c(6:11, 1:5)]
+names(so@misc$sample_cols) <- levels(so$sample)
 
 so@misc$sample_name_cols <- so@misc$sample_cols
 names(so@misc$sample_name_cols) <- levels(so$sample_name)
