@@ -35,35 +35,35 @@ function fig2 {
     Fig2/elements/Fig2E.svg
   cp $STEPSDIR/012.0.V.T.isolated_CD8EM/results/plots/isolated_CD8EM.feature_plot_MAP3K8.svg \
     Fig2/elements/Fig2F.svg
-  cp $STEPSDIR/010.0.V.T.de_results/results/plots/selected_genes_heatmap/heatmap_prolif_CD8TEM.pdf \
+  cp $STEPSDIR/007.0.V.T.de_results/results/plots/selected_genes_heatmap/heatmap_prolif_CD8TEM.pdf \
     Fig2/elements/Fig2G.pdf
 }
 
 function fig4 {
   mkdir -p Fig4/elements
-  cp $STEPSDIR/010.0.V.T.de_results/results/plots/dotplots/T.de_genes_dotplot.Naive_CD4_T_cells.svg \
+  cp $STEPSDIR/007.0.V.T.de_results/results/plots/dotplots/T.de_genes_dotplot.Naive_CD4_T_cells.svg \
     Fig4/elements/Fig4A.1.svg
-  cp $STEPSDIR/010.0.V.T.de_results/results/plots/dotplots/T.de_genes_dotplot.T_regulatory_cells.svg \
+  cp $STEPSDIR/007.0.V.T.de_results/results/plots/dotplots/T.de_genes_dotplot.T_regulatory_cells.svg \
     Fig4/elements/Fig4A.2.svg
-  cp $STEPSDIR/010.0.V.T.de_results/results/plots/dotplots/T.de_genes_dotplot.Th1_cells.svg \
+  cp $STEPSDIR/007.0.V.T.de_results/results/plots/dotplots/T.de_genes_dotplot.Th1_cells.svg \
     Fig4/elements/Fig4A.3.svg
-  cp $STEPSDIR/010.0.V.T.de_results/results/plots/dotplots/T.de_genes_dotplot.Th2_cells.svg \
+  cp $STEPSDIR/007.0.V.T.de_results/results/plots/dotplots/T.de_genes_dotplot.Th2_cells.svg \
     Fig4/elements/Fig4A.4.svg
-  cp $STEPSDIR/010.0.V.T.de_results/results/plots/dotplots/T.de_genes_dotplot.Th1_Th17_cells.svg \
+  cp $STEPSDIR/007.0.V.T.de_results/results/plots/dotplots/T.de_genes_dotplot.Th1_Th17_cells.svg \
     Fig4/elements/Fig4A.5.svg
-  cp $STEPSDIR/010.0.V.T.de_results/results/plots/dotplots/T.de_genes_dotplot.Th17_cells.svg \
+  cp $STEPSDIR/007.0.V.T.de_results/results/plots/dotplots/T.de_genes_dotplot.Th17_cells.svg \
     Fig4/elements/Fig4A.6.svg
-  cp $STEPSDIR/010.0.V.T.de_results/results/plots/dotplots/T.de_genes_dotplot.Follicular_helper_T_cells.svg \
+  cp $STEPSDIR/007.0.V.T.de_results/results/plots/dotplots/T.de_genes_dotplot.Follicular_helper_T_cells.svg \
     Fig4/elements/Fig4A.7.svg
-  cp $STEPSDIR/010.0.V.T.de_results/results/plots/dotplots/T.de_genes_dotplot.Naive_CD8_T_cells.svg \
+  cp $STEPSDIR/007.0.V.T.de_results/results/plots/dotplots/T.de_genes_dotplot.Naive_CD8_T_cells.svg \
     Fig4/elements/Fig4A.8.svg
-  cp $STEPSDIR/010.0.V.T.de_results/results/plots/dotplots/T.de_genes.dotplot.Effector_memory_CD8_T_cells.svg \
+  cp $STEPSDIR/007.0.V.T.de_results/results/plots/dotplots/T.de_genes.dotplot.Effector_memory_CD8_T_cells.svg \
     Fig4/elements/Fig4A.9.svg
-  cp $STEPSDIR/010.0.V.T.de_results/results/plots/dotplots/T.de_genes.dotplot.Central_memory_CD8_T_cells.svg \
+  cp $STEPSDIR/007.0.V.T.de_results/results/plots/dotplots/T.de_genes.dotplot.Central_memory_CD8_T_cells.svg \
     Fig4/elements/Fig4A.10.svg
-  cp $STEPSDIR/010.0.V.T.de_results/results/plots/dotplots/T.de_genes_dotplot.Gamma-delta_T_cells.svg \
+  cp $STEPSDIR/007.0.V.T.de_results/results/plots/dotplots/T.de_genes_dotplot.Gamma-delta_T_cells.svg \
     Fig4/elements/Fig4A.11.svg
-  cp $STEPSDIR/010.0.V.T.de_results/results/plots/selected_genes_heatmap/heatmap_T_subtypes.pdf \
+  cp $STEPSDIR/007.0.V.T.de_results/results/plots/selected_genes_heatmap/heatmap_T_subtypes.pdf \
     Fig4/elements/Fig4B.pdf
 }
 
