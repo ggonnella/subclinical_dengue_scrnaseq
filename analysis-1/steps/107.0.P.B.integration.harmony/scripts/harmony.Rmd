@@ -20,7 +20,7 @@ library(Seurat)
 prj_root <- paste0(params$pfx, "inden/")
 analysis_root <- paste0(prj_root, "analysis-1/")
 
-prev_step_dir <- paste0(analysis_root, "steps/106.0.P.B.merging.seurat/")
+prev_step_dir <- paste0(analysis_root, "steps/103.0.P.B.merging.seurat/")
 input_var_dir <- paste0(prev_step_dir, "results/vars/")
 if (!dir.exists(input_var_dir)) {
   stop("Input variable directory does not exist: ", input_var_dir)
