@@ -29,11 +29,11 @@ function fig2 {
     Fig2/elements/Fig2B.svg
   cp $STEPSDIR/005.0.V.T.splitted_CD8EM/results/plots/umap.by_cond.phase.svg \
     Fig2/elements/Fig2C.svg
-  cp $STEPSDIR/012.0.V.T.isolated_CD8EM/results/plots/isolated_CD8EM.umap_plot_by_subcluster.svg \
+  cp $STEPSDIR/009.0.V.T.isolated_CD8EM/results/plots/isolated_CD8EM.umap_plot_by_subcluster.svg \
     Fig2/elements/Fig2D.svg
-  cp $STEPSDIR/012.0.V.T.isolated_CD8EM/results/plots/isolated_CD8EM.celltype_proportions.svg \
+  cp $STEPSDIR/009.0.V.T.isolated_CD8EM/results/plots/isolated_CD8EM.celltype_proportions.svg \
     Fig2/elements/Fig2E.svg
-  cp $STEPSDIR/012.0.V.T.isolated_CD8EM/results/plots/isolated_CD8EM.feature_plot_MAP3K8.svg \
+  cp $STEPSDIR/009.0.V.T.isolated_CD8EM/results/plots/isolated_CD8EM.feature_plot_MAP3K8.svg \
     Fig2/elements/Fig2F.svg
   cp $STEPSDIR/007.0.V.T.de_results/results/plots/selected_genes_heatmap/heatmap_prolif_CD8TEM.pdf \
     Fig2/elements/Fig2G.pdf
