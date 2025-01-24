@@ -348,7 +348,7 @@ select_genes <- function(so, minrowsum = 0, keep_TCR = F,
     if (verbose) {
       print(paste0("Minimum row sum parameter: ", minrowsum))
     }
-    rs <- Matrix::rowSums(so@assays$RNA@counts)
+    rs <- Matrix::rowSums(so@assays$RNA$counts)
     selgenes <- selgenes[rs > minrowsum]
     if (verbose) {
       print(paste0("Number of selected genes passing rowsum filter: ",

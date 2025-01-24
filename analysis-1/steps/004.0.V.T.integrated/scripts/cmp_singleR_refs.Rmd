@@ -46,7 +46,7 @@ divergent_colors <- c(
 ```{r def_prepare_sce}
 prepare_sce <- function(so) {
   sce <- SingleCellExperiment::SingleCellExperiment(
-    assays=list(counts=so@assays$RNA@counts))
+    assays=list(counts=so@assays$RNA$counts))
   sce <- scater::logNormCounts(sce)
   return <- sce
 }
