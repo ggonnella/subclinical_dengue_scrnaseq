@@ -21,13 +21,13 @@ prj_root <- paste0(params$pfx, "inden/")
 analysis_root <- paste0(prj_root, "analysis-1/")
 
 input_step_dir <- paste0(analysis_root,
-                         "steps/013.0.P.T.TCR_analysis.platypus/")
+                         "steps/010.0.P.T.TCR_analysis.platypus/")
 input_var_dir <- paste0(input_step_dir, "results/vars/")
 if (!dir.exists(input_var_dir)) {
   stop("Input variable directory does not exist: ", input_var_dir)
 }
 
-this_step_dir <- paste0(analysis_root, "steps/013.0.V.T.TCR_results/")
+this_step_dir <- paste0(analysis_root, "steps/010.0.V.T.TCR_results/")
 if (!dir.exists(this_step_dir)) {
   stop("Current step directory does not exist: ", this_step_dir)
 }

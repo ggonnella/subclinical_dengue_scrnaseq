@@ -69,21 +69,21 @@ function fig4 {
 
 function fig5 {
   mkdir -p Fig5/elements
-  cp $STEPSDIR/013.0.V.T.TCR_results/results/plots/T.clonotype_size_umapharm.svg \
+  cp $STEPSDIR/010.0.V.T.TCR_results/results/plots/T.clonotype_size_umapharm.svg \
     Fig5/elements/Fig5A.svg
-  cp $STEPSDIR/013.0.V.T.TCR_results/results/plots/T.CD4__TEMRA_clonotype_size.svg \
+  cp $STEPSDIR/010.0.V.T.TCR_results/results/plots/T.CD4__TEMRA_clonotype_size.svg \
     Fig5/elements/Fig5B.1.svg
-  cp $STEPSDIR/013.0.V.T.TCR_results/results/plots/T.Prolif__CD8__EM_clonotype_size.svg \
+  cp $STEPSDIR/010.0.V.T.TCR_results/results/plots/T.Prolif__CD8__EM_clonotype_size.svg \
     Fig5/elements/Fig5B.2.svg
-  cp $STEPSDIR/013.0.V.T.TCR_results/results/plots/T.celltypes_clonotypes_barplots.svg \
+  cp $STEPSDIR/010.0.V.T.TCR_results/results/plots/T.celltypes_clonotypes_barplots.svg \
     Fig5/elements/Fig5C.svg
-  cp $STEPSDIR/013.0.V.T.TCR_results/results/plots/T.alpha_beta_pairings.CD4__TEMRA.svg \
+  cp $STEPSDIR/010.0.V.T.TCR_results/results/plots/T.alpha_beta_pairings.CD4__TEMRA.svg \
     Fig5/elements/Fig5D.1.svg
-  cp $STEPSDIR/013.0.V.T.TCR_results/results/plots/T.alpha_beta_pairings.CD8_EM.svg \
+  cp $STEPSDIR/010.0.V.T.TCR_results/results/plots/T.alpha_beta_pairings.CD8_EM.svg \
     Fig5/elements/Fig5D.2.svg
-  cp $STEPSDIR/013.0.V.T.TCR_results/results/plots/T.most_freq_clonotypes.VDJ.by_sample.CD4__TEMRA.svg \
+  cp $STEPSDIR/010.0.V.T.TCR_results/results/plots/T.most_freq_clonotypes.VDJ.by_sample.CD4__TEMRA.svg \
     Fig5/elements/Fig5E.1.svg
-  cp $STEPSDIR/013.0.V.T.TCR_results/results/plots/T.most_freq_clonotypes.VDJ.by_sample.CD8__EM.svg \
+  cp $STEPSDIR/010.0.V.T.TCR_results/results/plots/T.most_freq_clonotypes.VDJ.by_sample.CD8__EM.svg \
     Fig5/elements/Fig5E.2.svg
 }
 
@@ -149,48 +149,48 @@ function fig7 {
 
 function figS4 {
   mkdir -p FigS4/elements
-  cp $STEPSDIR/013.0.V.T.TCR_results/results/plots/T.Non_prolif__CD8__EM_clonotype_size.svg \
+  cp $STEPSDIR/010.0.V.T.TCR_results/results/plots/T.Non_prolif__CD8__EM_clonotype_size.svg \
     FigS4/elements/FigS4A.1.svg
-  cp $STEPSDIR/013.0.V.T.TCR_results/results/plots/T.CD8__TEMRA_clonotype_size.svg \
+  cp $STEPSDIR/010.0.V.T.TCR_results/results/plots/T.CD8__TEMRA_clonotype_size.svg \
     FigS4/elements/FigS4A.2.svg
-  cp $STEPSDIR/013.0.V.T.TCR_results/results/plots/T.GD_clonotype_size.svg \
+  cp $STEPSDIR/010.0.V.T.TCR_results/results/plots/T.GD_clonotype_size.svg \
     FigS4/elements/FigS4A.3.svg
-  cd $STEPSDIR/013.0.V.T.TCR_results/results/plots/T.alpha_beta_pairings.CD8__TEMRA.svg \
+  cd $STEPSDIR/010.0.V.T.TCR_results/results/plots/T.alpha_beta_pairings.CD8__TEMRA.svg \
     FigS4/elements/FigS4B.svg
 }
 
 function figS5 {
   mkdir -p FigS5/elements
   # TODO: check diff in .1.
-  cp $STEPSDIR/013.0.V.T.TCR_results/results/plots/T.most_freq_CDR3aa.VDJ.by_sample.CD4__Naive.svg \
+  cp $STEPSDIR/010.0.V.T.TCR_results/results/plots/T.most_freq_CDR3aa.VDJ.by_sample.CD4__Naive.svg \
     FigS5/elements/FigS5.1.svg
-  cp $STEPSDIR/013.0.V.T.TCR_results/results/plots/T.most_freq_CDR3aa.VDJ.by_sample.Tfh.svg \
+  cp $STEPSDIR/010.0.V.T.TCR_results/results/plots/T.most_freq_CDR3aa.VDJ.by_sample.Tfh.svg \
     FigS5/elements/FigS5.2.svg
-  cp $STEPSDIR/013.0.V.T.TCR_results/results/plots/T.most_freq_CDR3aa.VDJ.by_sample.Th1.svg \
+  cp $STEPSDIR/010.0.V.T.TCR_results/results/plots/T.most_freq_CDR3aa.VDJ.by_sample.Th1.svg \
     FigS5/elements/FigS5.3.svg
-  cp $STEPSDIR/013.0.V.T.TCR_results/results/plots/T.most_freq_CDR3aa.VDJ.by_sample.Th1_Th17.svg \
+  cp $STEPSDIR/010.0.V.T.TCR_results/results/plots/T.most_freq_CDR3aa.VDJ.by_sample.Th1_Th17.svg \
     FigS5/elements/FigS5.4.svg
-  cp $STEPSDIR/013.0.V.T.TCR_results/results/plots/T.most_freq_CDR3aa.VDJ.by_sample.Th17.svg \
+  cp $STEPSDIR/010.0.V.T.TCR_results/results/plots/T.most_freq_CDR3aa.VDJ.by_sample.Th17.svg \
     FigS5/elements/FigS5.5.svg
-  cp $STEPSDIR/013.0.V.T.TCR_results/results/plots/T.most_freq_CDR3aa.VDJ.by_sample.Th2.svg \
+  cp $STEPSDIR/010.0.V.T.TCR_results/results/plots/T.most_freq_CDR3aa.VDJ.by_sample.Th2.svg \
     FigS5/elements/FigS5.6.svg
-  cp $STEPSDIR/013.0.V.T.TCR_results/results/plots/T.most_freq_CDR3aa.VDJ.by_sample.Tregs.svg \
+  cp $STEPSDIR/010.0.V.T.TCR_results/results/plots/T.most_freq_CDR3aa.VDJ.by_sample.Tregs.svg \
     FigS5/elements/FigS5.7.svg
-  cp $STEPSDIR/013.0.V.T.TCR_results/results/plots/T.most_freq_CDR3aa.VDJ.by_sample.CD8__Naive.svg \
+  cp $STEPSDIR/010.0.V.T.TCR_results/results/plots/T.most_freq_CDR3aa.VDJ.by_sample.CD8__Naive.svg \
     FigS5/elements/FigS5.8.svg
-  cp $STEPSDIR/013.0.V.T.TCR_results/results/plots/T.most_freq_CDR3aa.VDJ.by_sample.CD8__CM.svg \
+  cp $STEPSDIR/010.0.V.T.TCR_results/results/plots/T.most_freq_CDR3aa.VDJ.by_sample.CD8__CM.svg \
     FigS5/elements/FigS5.9.svg
-  cp $STEPSDIR/013.0.V.T.TCR_results/results/plots/T.most_freq_CDR3aa.VDJ.by_sample.CD8__TEMRA.svg \
+  cp $STEPSDIR/010.0.V.T.TCR_results/results/plots/T.most_freq_CDR3aa.VDJ.by_sample.CD8__TEMRA.svg \
     FigS5/elements/FigS5.10.svg
 }
 
 function figS6 {
   mkdir -p FigS6/elements
-  cp $STEPSDIR/013.0.V.T.TCR_results/results/plots/VDJ_cdr3s_aa.overlap.svg \
+  cp $STEPSDIR/010.0.V.T.TCR_results/results/plots/VDJ_cdr3s_aa.overlap.svg \
     FigS6/elements/FigS6.A.svg
-  cp $STEPSDIR/013.0.V.T.TCR_results/results/plots/VJ_cdr3s_aa.overlap.svg \
+  cp $STEPSDIR/010.0.V.T.TCR_results/results/plots/VJ_cdr3s_aa.overlap.svg \
     FigS6/elements/FigS6.B.svg
-  cp $STEPSDIR/013.0.V.T.TCR_results/results/plots/VDJ_VJ_cdr3s_aa.overlap.svg \
+  cp $STEPSDIR/010.0.V.T.TCR_results/results/plots/VDJ_VJ_cdr3s_aa.overlap.svg \
     FigS6/elements/FigS6.C.svg
 }
 
