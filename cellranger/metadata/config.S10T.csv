@@ -1,0 +1,9 @@
+[gene-expression]
+reference,/pasteur/appa/scratch/SONIC/users/smella/refdata-gex-GRCh38-2020-A/
+include-introns,false
+[vdj]
+reference,/pasteur/appa/scratch/SONIC/users/smella/refdata-cellranger-vdj-GRCh38-alts-ensembl-5.0.0
+[libraries]
+fastq_id,fastqs,feature_types
+SI_GA_E10,/pasteur/appa/scratch/SONIC/users/smella/Tineke_03/fromSequencer/X201SC21122831-Z01-F001_7/X201SC21122831-Z01-F001/raw_data/SI_GA_E10,Gene Expression
+SI_GA_G10,/pasteur/appa/scratch/SONIC/users/smella/Tineke_03/fromSequencer/X201SC21122831-Z01-F001_16/X201SC21122831-Z01-F001/raw_data/SI_GA_G10,VDJ-T
