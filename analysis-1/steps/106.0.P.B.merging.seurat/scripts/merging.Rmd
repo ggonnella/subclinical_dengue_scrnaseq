@@ -17,7 +17,7 @@ library(Seurat)
 prj_root <- paste0(params$pfx, "inden/")
 analysis_root <- paste0(prj_root, "analysis-1/")
 
-# TODO: change this, integrating the steps before 006 to the analysis
+# TODO: change this, integrating the steps before to the analysis
 input_var_dir_prevanalysis1 <- paste0(prj_root, "data/bcells1/")
 input_var_dir_prevanalysis2 <- paste0(prj_root, "data/bcells2/")
 if (!dir.exists(input_var_dir_prevanalysis1)) {
