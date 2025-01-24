@@ -89,7 +89,7 @@ function fig5 {
 
 function fig6 {
   mkdir -p Fig6/elements
-  cp $STEPSDIR/107.0.V.B.integrated/results/plots/umap.celltypes.svg \
+  cp $STEPSDIR/104.0.V.B.integrated/results/plots/umap.celltypes.svg \
     Fig6/elements/Fig6A.svg
   cp $STEPSDIR/108.0.V.B.splitted_plasmablasts/results/plots/singleR_proportion_test.svg \
     Fig6/elements/Fig6B.svg

@@ -22,13 +22,13 @@ library(RColorBrewer)
 prj_root <- paste0(params$pfx, "inden/")
 analysis_root <- paste0(prj_root, "analysis-1/")
 
-input_step_dir <- paste0(analysis_root, "steps/107.0.P.B.integration.harmony/")
+input_step_dir <- paste0(analysis_root, "steps/104.0.P.B.integration.harmony/")
 input_var_dir <- paste0(input_step_dir, "results/vars/")
 if (!dir.exists(input_var_dir)) {
   stop("Input variable directory does not exist: ", input_var_dir)
 }
 
-this_step_dir <- paste0(analysis_root, "steps/107.0.V.B.integrated/")
+this_step_dir <- paste0(analysis_root, "steps/104.0.V.B.integrated/")
 if (!dir.exists(this_step_dir)) {
   stop("Current step directory does not exist: ", this_step_dir)
 }
