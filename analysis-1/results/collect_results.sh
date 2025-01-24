@@ -23,7 +23,7 @@ function fig1 {
 
 function fig2 {
   mkdir -p Fig2/elements
-  cp $STEPSDIR/009.0.V.T.metabolism_plots/results/plots/scMetabolism.Dotplot.T.svg \
+  cp $STEPSDIR/006.0.V.T.metabolism_plots/results/plots/scMetabolism.Dotplot.T.svg \
     Fig2/elements/Fig2A.svg
   cp $STEPSDIR/005.0.V.T.splitted_CD8EM/results/plots/phase_marker.MKI67.svg \
     Fig2/elements/Fig2B.svg
