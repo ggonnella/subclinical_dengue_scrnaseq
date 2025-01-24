@@ -8,6 +8,7 @@ output:
 params:
   pfx: "/srv/baia/"
   libpath: "/home/giorgio/R-pkg-Seurat5/"
+  mixcr: "/home/giorgio/software/mambaforge/pkgs/mixcr-3.0.12-0/share/mixcr-3.0.12-0/"
 ---
 
 ```{r setup, include=FALSE}
@@ -156,6 +157,25 @@ signif_results <- results[results$p_adj < 0.05, ]
 
 vgm_HL$GEX@misc$gene_pairings$hpb_all <- results
 vgm_HL$GEX@misc$gene_pairings$hpb_p_filt <- signif_results
+```
+
+## SHM analysis
+
+```{r}
+vgm_HL$VDJ$VDJ_SHM <- NULL
+vgm_HL$VDJ$VJ_SHM <- NULL
+files <- list.files(pattern = "^temp")
+file.remove(files)
+mixcr_out <- VDJ_call_MIXCR(
+    VDJ = vgm_HL$VDJ,
+    mixcr.directory = params$mixcr,
+    species = "hsa",  # or "mmu" for mouse
+    platypus.version = "v3",
+    operating.system = "Linux",
+    simplify = TRUE,
+    custom.cmd.call = "java -jar"
+)
+vgm_HL$VDJ <- mixcr_out
 ```
 
 ## Save
