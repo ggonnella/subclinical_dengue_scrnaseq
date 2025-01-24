@@ -9,15 +9,15 @@ STEPSDIR=../steps
 
 function fig1 {
   mkdir -p Fig1/elements
-  cp $STEPSDIR/008.0.V.T.splitted_CD8EM/results/plots/umap.by_cond.singleR_fine.mod.svg \
+  cp $STEPSDIR/005.0.V.T.splitted_CD8EM/results/plots/umap.by_cond.singleR_fine.mod.svg \
     Fig1/elements/Fig1B.svg
   cp $STEPSDIR/004.0.V.T.integrated/results/plots/singleR_proportion_test.svg \
     Fig1/elements/Fig1C.svg
-  cp $STEPSDIR/008.0.V.T.splitted_CD8EM/results/plots/umap.by_cond.Terminal_effector_CD4_T_cells.svg \
+  cp $STEPSDIR/005.0.V.T.splitted_CD8EM/results/plots/umap.by_cond.Terminal_effector_CD4_T_cells.svg \
     Fig1/elements/Fig1D.svg
-  cp $STEPSDIR/008.0.V.T.splitted_CD8EM/results/plots/umap.by_cond.MAIT_cells.svg \
+  cp $STEPSDIR/005.0.V.T.splitted_CD8EM/results/plots/umap.by_cond.MAIT_cells.svg \
     Fig1/elements/Fig1E.svg
-  cp $STEPSDIR/008.0.V.T.splitted_CD8EM/results/plots/umap.by_cond.Gamma_delta_T_cells.svg \
+  cp $STEPSDIR/005.0.V.T.splitted_CD8EM/results/plots/umap.by_cond.Gamma_delta_T_cells.svg \
     Fig1/elements/Fig1F.svg
 }
 
@@ -25,9 +25,9 @@ function fig2 {
   mkdir -p Fig2/elements
   cp $STEPSDIR/009.0.V.T.metabolism_plots/results/plots/scMetabolism.Dotplot.T.svg \
     Fig2/elements/Fig2A.svg
-  cp $STEPSDIR/008.0.V.T.splitted_CD8EM/results/plots/phase_marker.MKI67.svg \
+  cp $STEPSDIR/005.0.V.T.splitted_CD8EM/results/plots/phase_marker.MKI67.svg \
     Fig2/elements/Fig2B.svg
-  cp $STEPSDIR/008.0.V.T.splitted_CD8EM/results/plots/umap.by_cond.phase.svg \
+  cp $STEPSDIR/005.0.V.T.splitted_CD8EM/results/plots/umap.by_cond.phase.svg \
     Fig2/elements/Fig2C.svg
   cp $STEPSDIR/012.0.V.T.isolated_CD8EM/results/plots/isolated_CD8EM.umap_plot_by_subcluster.svg \
     Fig2/elements/Fig2D.svg

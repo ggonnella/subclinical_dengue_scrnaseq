@@ -16,22 +16,12 @@ knitr::opts_chunk$set(message=F, warning=F, echo=T)
 
 library(Seurat)
 library(harmony)
-#library(viridis)
-#library(ggplot2)
-#library(ggrepel)
-#library(ggExtra)
-#library(gplots)
-#library(RColorBrewer)
-#library(reshape2)
-#library(ggsci)
-#library(dplyr)
-#library(clusterProfiler)
 library(scProportionTest)
 
 prj_root <- paste0(params$pfx, "inden/")
 analysis_root <- paste0(prj_root, "analysis-1/")
 
-prev_step_dir <- paste0(analysis_root, "steps/008.0.P.T.split_CD8EM/")
+prev_step_dir <- paste0(analysis_root, "steps/005.0.P.T.split_CD8EM/")
 input_var_dir <- paste0(prev_step_dir, "results/vars/")
 if (!dir.exists(input_var_dir)) {
   stop("Input variable directory does not exist: ", input_var_dir)
