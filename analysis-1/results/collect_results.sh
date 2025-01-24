@@ -81,10 +81,8 @@ function fig5 {
     Fig5/elements/Fig5D.1.svg
   cp $STEPSDIR/013.0.V.T.TCR_results/results/plots/T.alpha_beta_pairings.CD8_EM.svg \
     Fig5/elements/Fig5D.2.svg
-  # TODO: fix colors, problem due to Ss < Hs in factor (step 013)
   cp $STEPSDIR/013.0.V.T.TCR_results/results/plots/T.most_freq_clonotypes.VDJ.by_sample.CD4__TEMRA.svg \
     Fig5/elements/Fig5E.1.svg
-  # TODO: fix colors, problem due to Ss < Hs in factor (step 013)
   cp $STEPSDIR/013.0.V.T.TCR_results/results/plots/T.most_freq_clonotypes.VDJ.by_sample.CD8__EM.svg \
     Fig5/elements/Fig5E.2.svg
 }
@@ -163,27 +161,26 @@ function figS4 {
 
 function figS5 {
   mkdir -p FigS5/elements
-  # TODO: colors
   # TODO: check diff in .1.
-  cp $STEPSDIR/013.0.V.T.TCR_results/results/plots/T.most_freq_clonotypes.VDJ.by_sample.CD4__Naive.svg \
+  cp $STEPSDIR/013.0.V.T.TCR_results/results/plots/T.most_freq_CDR3aa.VDJ.by_sample.CD4__Naive.svg \
     FigS5/elements/FigS5.1.svg
-  cp $STEPSDIR/013.0.V.T.TCR_results/results/plots/T.most_freq_clonotypes.VDJ.by_sample.Tfh.svg \
+  cp $STEPSDIR/013.0.V.T.TCR_results/results/plots/T.most_freq_CDR3aa.VDJ.by_sample.Tfh.svg \
     FigS5/elements/FigS5.2.svg
-  cp $STEPSDIR/013.0.V.T.TCR_results/results/plots/T.most_freq_clonotypes.VDJ.by_sample.Th1.svg \
+  cp $STEPSDIR/013.0.V.T.TCR_results/results/plots/T.most_freq_CDR3aa.VDJ.by_sample.Th1.svg \
     FigS5/elements/FigS5.3.svg
-  cp $STEPSDIR/013.0.V.T.TCR_results/results/plots/T.most_freq_clonotypes.VDJ.by_sample.Th1_Th17.svg \
+  cp $STEPSDIR/013.0.V.T.TCR_results/results/plots/T.most_freq_CDR3aa.VDJ.by_sample.Th1_Th17.svg \
     FigS5/elements/FigS5.4.svg
-  cp $STEPSDIR/013.0.V.T.TCR_results/results/plots/T.most_freq_clonotypes.VDJ.by_sample.Th17.svg \
+  cp $STEPSDIR/013.0.V.T.TCR_results/results/plots/T.most_freq_CDR3aa.VDJ.by_sample.Th17.svg \
     FigS5/elements/FigS5.5.svg
-  cp $STEPSDIR/013.0.V.T.TCR_results/results/plots/T.most_freq_clonotypes.VDJ.by_sample.Th2.svg \
+  cp $STEPSDIR/013.0.V.T.TCR_results/results/plots/T.most_freq_CDR3aa.VDJ.by_sample.Th2.svg \
     FigS5/elements/FigS5.6.svg
-  cp $STEPSDIR/013.0.V.T.TCR_results/results/plots/T.most_freq_clonotypes.VDJ.by_sample.Tregs.svg \
+  cp $STEPSDIR/013.0.V.T.TCR_results/results/plots/T.most_freq_CDR3aa.VDJ.by_sample.Tregs.svg \
     FigS5/elements/FigS5.7.svg
-  cp $STEPSDIR/013.0.V.T.TCR_results/results/plots/T.most_freq_clonotypes.VDJ.by_sample.CD8__Naive.svg \
+  cp $STEPSDIR/013.0.V.T.TCR_results/results/plots/T.most_freq_CDR3aa.VDJ.by_sample.CD8__Naive.svg \
     FigS5/elements/FigS5.8.svg
-  cp $STEPSDIR/013.0.V.T.TCR_results/results/plots/T.most_freq_clonotypes.VDJ.by_sample.CD8__CM.svg \
+  cp $STEPSDIR/013.0.V.T.TCR_results/results/plots/T.most_freq_CDR3aa.VDJ.by_sample.CD8__CM.svg \
     FigS5/elements/FigS5.9.svg
-  cp $STEPSDIR/013.0.V.T.TCR_results/results/plots/T.most_freq_clonotypes.VDJ.by_sample.CD8__TEMRA.svg \
+  cp $STEPSDIR/013.0.V.T.TCR_results/results/plots/T.most_freq_CDR3aa.VDJ.by_sample.CD8__TEMRA.svg \
     FigS5/elements/FigS5.10.svg
 }
 
