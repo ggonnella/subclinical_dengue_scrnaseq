@@ -1358,3 +1358,108 @@ fix_enclone_clonotyping_output <- function(vdj_after) {
   vdj_after <- vdj_after[!vdj_after$clonotype_id %in% clonotype_to_rm,]
 }
 
+VDJ_SHM_boxplot <- function(vdj, group.by = "sample_id",
+                            point.size = 0.5, box.color = "black",
+                            dot.alpha = 0.2, group.colors = NULL) {
+    name <- NULL
+    group <- NULL
+    value <- NULL
+    VDJ_SHM <- NULL
+    VJ_SHM <- NULL
+    barcode <- NULL
+
+    to_plot <- vdj[, c(group.by, "barcode", "VDJ_SHM", "VJ_SHM")]
+    names(to_plot)[1] <- "group"
+    to_plot$VDJ_SHM[is.na(to_plot$VDJ_SHM)] <- 0
+    to_plot$VJ_SHM[is.na(to_plot$VJ_SHM)] <- 0
+    to_plot_long <- tidyr::pivot_longer(to_plot, cols = c(3:4))
+
+    if (is.null(group.colors)) {
+        group.colors <- ggplot2::scale_color_manual(values = NULL)
+    } else {
+        group.colors <- ggplot2::scale_color_manual(values = group.colors)
+    }
+
+    stats <- to_plot_long %>% dplyr::group_by(name, group) %>%
+        dplyr::summarise(median = stats::median(value), 
+                         IQR_lower = stats::quantile(value, 0.25), 
+                         IQR_upper = stats::quantile(value, 0.75))
+
+    box_plot <- ggplot2::ggplot(to_plot_long, ggplot2::aes(color = group, 
+        y = value, x = group)) + 
+        ggplot2::geom_jitter(alpha = dot.alpha, width = 0.15, size = point.size) + 
+        ggplot2::geom_boxplot(aes(group = group), color = box.color,
+                              outlier.shape = NA, alpha = 0.4, width = 0.5) + 
+        group.colors + 
+        ggplot2::theme_bw() + cowplot::theme_cowplot() + 
+        ggplot2::theme(plot.title = ggplot2::element_text(hjust = 0.5)) + 
+        ggplot2::ylab("SHM") + 
+        ggplot2::xlab("") + 
+        ggplot2::ggtitle(label = paste0("SHM per ", group.by)) + 
+        ggplot2::theme(strip.background = ggplot2::element_rect(color = "white", fill = "white")) + 
+        ggplot2::theme(legend.position = "none") +  # Remove legend
+        ggplot2::facet_wrap(~name)
+
+    return(box_plot)
+}
+
+compute_SHM_stats <- function(data, label, group_column, group1, group2) {
+  metrics <- c("VDJ_SHM", "VJ_SHM")
+  stats_list <- list()
+  
+  for (metric in metrics) {
+    mean_group1_col <- paste0("mean_", group1)
+    sd_group1_col <- paste0("sd_", group1)
+    median_group1_col <- paste0("median_", group1)
+    Q1_group1_col <- paste0("Q1_", group1)
+    Q3_group1_col <- paste0("Q3_", group1)
+    
+    mean_group2_col <- paste0("mean_", group2)
+    sd_group2_col <- paste0("sd_", group2)
+    median_group2_col <- paste0("median_", group2)
+    Q1_group2_col <- paste0("Q1_", group2)
+    Q3_group2_col <- paste0("Q3_", group2)
+    
+    stats_group1 <- data %>%
+      filter(get(group_column) == group1) %>%
+      summarise(
+        mean = mean(get(metric), na.rm = TRUE),
+        sd = sd(get(metric), na.rm = TRUE),
+        median = median(get(metric), na.rm = TRUE),
+        Q1 = quantile(get(metric), 0.25, na.rm = TRUE),
+        Q3 = quantile(get(metric), 0.75, na.rm = TRUE)
+      )
+    
+    stats_group2 <- data %>%
+      filter(get(group_column) == group2) %>%
+      summarise(
+        mean = mean(get(metric), na.rm = TRUE),
+        sd = sd(get(metric), na.rm = TRUE),
+        median = median(get(metric), na.rm = TRUE),
+        Q1 = quantile(get(metric), 0.25, na.rm = TRUE),
+        Q3 = quantile(get(metric), 0.75, na.rm = TRUE)
+      )
+    
+    p_value <- wilcox.test(get(metric) ~ get(group_column), data = data)$p.value
+    
+    stats <- tibble(
+      subset_label = label,
+      metric = metric,
+      !!mean_group1_col := stats_group1$mean,
+      !!sd_group1_col := stats_group1$sd,
+      !!median_group1_col := stats_group1$median,
+      !!Q1_group1_col := stats_group1$Q1,
+      !!Q3_group1_col := stats_group1$Q3,
+      !!mean_group2_col := stats_group2$mean,
+      !!sd_group2_col := stats_group2$sd,
+      !!median_group2_col := stats_group2$median,
+      !!Q1_group2_col := stats_group2$Q1,
+      !!Q3_group2_col := stats_group2$Q3,
+      p_value = p_value
+    )
+    
+    stats_list[[metric]] <- stats
+  }
+  
+  return(bind_rows(stats_list))
+}

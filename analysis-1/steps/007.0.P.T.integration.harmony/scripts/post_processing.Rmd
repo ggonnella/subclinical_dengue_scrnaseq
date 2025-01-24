@@ -27,6 +27,9 @@ if (!dir.exists(this_step_dir)) {
 }
 
 var_dir <- paste0(this_step_dir, "results/vars/")
+if (!dir.exists(var_dir)) {
+  stop("Input variable directory does not exist: ", var_dir)
+}
 ```
 
 ```{r load, echo=F}

@@ -35,8 +35,8 @@ var_dir <- paste0(this_step_dir, "results/vars/")
 dir.create(var_dir, showWarnings = FALSE, recursive = TRUE)
 
 helpers_dir <- paste0(prj_root, "helpers/")
-source(paste0(helpers_dir, "helpers.R"))
-source(paste0(helpers_dir, "factor_resolution.R"))
+source(paste0(helpers_dir, "merging_helpers.R"))
+source(paste0(helpers_dir, "clustering_helpers.R"))
 ```
 
 In the merging step, the individual samples are merged into a single
@@ -76,7 +76,7 @@ The analysis (SCT, PCA, UMAP) is removed from the Seurat objects to avoid
 confusion after the merging. Without this step, the merging function fails.
 
 ```{r remove_info}
-bcells_ls <- lapply(bcells_ls, remove_info)
+bcells_ls <- lapply(bcells_ls, prepare_so_merging)
 ```
 
 ## Merging
