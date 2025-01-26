@@ -1,0 +1,222 @@
+---
+title: "InDen B cells | Individual samples | SO filtering by QC"
+author: "Giorgio Gonnella; Sebastien Mella"
+date: "2024-03-27"
+output:
+  html_document: default
+params:
+  pfx: "/srv/baia/"
+  libpath: "/home/giorgio/R-pkg-Seurat5/"
+  sample: NA
+  manual_filter_selection: TRUE
+---
+
+```{r setup, echo=FALSE, include=FALSE}
+knitr::opts_chunk$set(message=F, warning=F, echo=F)
+.libPaths(c(params$libpath, .libPaths()))
+
+library(Seurat)
+library(ggplot2)
+library(ggExtra)
+library(grid)
+library(scater)
+library(gplots)
+library(DT)
+library(ggbeeswarm)
+library(parallel)
+library(robustbase)
+library(viridis)
+library(SingleR)
+library(celldex)
+
+if (is.na(params$sample)) {
+  stop("Please provide a sample name")
+}
+
+prj_root <- paste0(params$pfx, "inden/")
+analysis_root <- paste0(prj_root, "analysis-1/")
+
+input_step_dir <- paste0(analysis_root, "steps/101.0.P.B.create_seurat_obj/")
+input_var_dir <- paste0(input_step_dir, "results/vars/")
+if (!dir.exists(input_var_dir)) {
+  stop("Input variable directory does not exist: ", input_var_dir)
+}
+
+this_step_dir <- paste0(analysis_root, "steps/102.0.P.B.qc_filter/")
+if (!dir.exists(this_step_dir)) {
+  stop("Current step directory does not exist: ", this_step_dir)
+}
+
+var_dir <- paste0(this_step_dir, "results/vars/")
+dir.create(var_dir, showWarnings = F, recursive = T)
+
+helpers_dir <- paste0(prj_root, "helpers/")
+source(paste0(helpers_dir, "qc_helpers.R"))
+```
+
+# Load Seurat object
+
+```{r load_so}
+so <- readRDS(paste0(input_var_dir, params$sample, "_so_initial.rds"))
+```
+
+# Filtering
+
+## Filter by nGenes, nUMIs and percent.mito
+
+```{r set_nGenes_thresholds}
+min_nGenes <- 500
+max_nGenes <- max(so$nFeature_RNA)
+
+#
+# Parameter selection based on the "scater_qcstats_detected" QC plot
+#
+if (params$manual_filter_selection) {
+  if (params$sample %in% c("sample_1_B", "sample_5_B")) {
+    max_nGenes <- max(so$nFeature_RNA)
+  } else {
+    max_nGenes <- 6000
+  }
+}
+```
+
+```{r set_nUMI_thresholds}
+min_nUMI <- 1000
+max_nUMI <- max(so$nCount_RNA)
+
+#
+# Parameter selection based on the "scater_qcstats_sum" QC plot
+#
+if (params$manual_filter_selection) {
+  if (params$sample %in% c("sample_1_B", "sample_5_B")) {
+    max_nUMI <- max(so$nCount_RNA)
+  } else {
+    max_nUMI <- 40000
+  }
+}
+```
+
+```{r set_max_pmito_threshold}
+max_pmito <- 0.1
+```
+
+```{r store_pre_filtering_stats}
+so@misc$qc_filtering = list()
+so@misc$qc_filtering$nCells = ncol(so)
+so@misc$qc_filtering$nGenes = c(min_nGenes, max_nGenes)
+so@misc$qc_filtering$nUMIs = c(min_nUMI, max_nUMI)
+so@misc$qc_filtering$pmito = max_pmito
+so@misc$qc_filtering$nCells_failing_nGenes =
+  count(so$nFeature_RNA > min_nGenes & so$nFeature_RNA < max_nGenes)
+so@misc$qc_filtering$nCells_failing_nUMIs =
+  count(so$nCount_RNA > min_nUMI & so$nCount_RNA < max_nUMI)
+so@misc$qc_filtering$nCells_failing_pmito = count(so$percent.mito <= max_pmito)
+so@misc$qc_filtering$nCells_failing_VDJ = count(!so$has_prod_vdj)
+so@misc$qc_filtering$nCells_failing_multi_outliers = count(so$multi.outlier)
+so@misc$qc_filtering$nCells_failing_CD3CD8 = count(!so$CD3_plus & !so$CD8_plus)
+```
+
+```{r subset1_nGenes_nUMIs_based}
+so <- subset(so, subset = nCount_RNA > min_nUMI & nCount_RNA < max_nUMI &
+             nFeature_RNA > min_nGenes & nFeature_RNA < max_nGenes &
+             percent.mito <= max_pmito)
+so$percent.mito.cl <- droplevels(so$percent.mito.cl)
+```
+
+## Filter by CD3 / CD8 positivity
+
+```{r filter_by_cd3}
+so <- subset(so, subset = CD3_plus == FALSE & CD8_plus == FALSE)
+```
+
+## Filter multi-outliers
+
+```{r subset outlier}
+so <- subset(so, subset = multi.outlier == FALSE)
+so@misc$qc_filtering$multi_outliers_applied = T
+```
+
+## Filter cells not classified by singleR as B cells
+
+### run SingleR
+
+```{r singleR}
+ref <- celldex::MonacoImmuneData()
+sce <- SingleCellExperiment(assays = list(counts = so@assays$RNA$counts))
+sce <- scater::logNormCounts(sce)
+
+# preparing pred main
+main_pred <- SingleR(test = sce, ref = ref, labels = ref$label.main,
+                     assay.type.test = "logcounts")
+main_pred_tab <- as.data.frame(main_pred$scores[,
+                   colnames(main_pred$scores)%in%unique(main_pred$labels)])
+main_pred_tab$pruned.labels <- main_pred$pruned.labels
+colnames(main_pred_tab) <-
+  paste(colnames(main_pred_tab), "singleR_main", sep = "_")
+rownames(main_pred_tab) <- rownames(main_pred)
+
+# preparing pred fine
+fine_pred <- SingleR(test = sce, ref = ref, labels = ref$label.fine,
+                     assay.type.test = "logcounts")
+fine_pred_tab <- as.data.frame(fine_pred$scores[,
+                   colnames(fine_pred$scores)%in%unique(fine_pred$labels)])
+fine_pred_tab$pruned.labels <- fine_pred$pruned.labels
+colnames(fine_pred_tab) <-
+  paste(colnames(fine_pred_tab), "singleR_fine", sep = "_")
+rownames(fine_pred_tab) <- rownames(fine_pred)
+
+# integrating into seurat meta data
+so@meta.data <- cbind(so@meta.data, main_pred_tab, fine_pred_tab)
+if (count(is.na(so$pruned.labels_singleR_main)) > 0)
+  so$pruned.labels_singleR_main[is.na(so$pruned.labels_singleR_main)] <- "unchar"
+print(sort(table(so$pruned.labels_singleR_main), decreasing = TRUE))
+if (count(is.na(so$pruned.labels_singleR_fine)) > 0)
+  so$pruned.labels_singleR_fine[is.na(so$pruned.labels_singleR_fine)] <- "unchar"
+print(sort(table(so$pruned.labels_singleR_fine), decreasing = T))
+
+lev_main <- names(sort(table(so$pruned.labels_singleR_main), decreasing = TRUE))
+if (count(is.na(so$pruned.labels_singleR_main)) > 0)
+  lev_main <- c(lev_main[-which(lev_main == "unchar")], "unchar")
+so$pruned.labels_singleR_main <- factor(so$pruned.labels_singleR_main,
+                                        levels = lev_main)
+
+lev_fine <- names(sort(table(so$pruned.labels_singleR_fine), decreasing = TRUE))
+if (count(is.na(so$pruned.labels_singleR_fine)) > 0)
+  lev_fine <- c(lev_fine[-which(lev_fine == "unchar")], "unchar")
+so$pruned.labels_singleR_fine <- factor(so$pruned.labels_singleR_fine,
+                                        levels = lev_fine)
+```
+
+### Filter
+
+```{r}
+so@misc$qc_filtering$nCells_failing_singleR =
+  count(!so$pruned.labels_singleR_main == "B cells" |
+        !so$pruned.labels_singleR_fine %in% c("Naive B cells",
+                                               "Switched memory B cells",
+                                               "Non-switched memory B cells",
+                                               "Exhausted B cells",
+                                               "Plasmablasts"))
+so@misc$qc_filtering$celltypes_main_before_celltype_filter =
+  table(so$pruned.labels_singleR_main)
+so@misc$qc_filtering$celltypes_fine_before_celltype_filter =
+  table(so$pruned.labels_singleR_fine)
+so@misc$qc_filtering$nCells_before_celltype_filter = ncol(so)
+so <- subset(so, subset = pruned.labels_singleR_main == "B cells" &
+             pruned.labels_singleR_fine %in% c("Naive B cells",
+                                               "Switched memory B cells",
+                                               "Non-switched memory B cells",
+                                               "Exhausted B cells",
+                                               "Plasmablasts"))
+```
+# Saving
+
+```{r saving, echo=T}
+saveRDS(so, paste0(var_dir, params$sample, "_so_filtered.rds"))
+```
+
+# Session info
+
+```{r session_info, echo=F}
+sessionInfo()
+```
