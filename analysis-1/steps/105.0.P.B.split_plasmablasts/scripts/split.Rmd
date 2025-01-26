@@ -40,7 +40,7 @@ so <- readRDS(file = paste0(input_var_dir, "integrated_so.rds"))
 ```
 
 The purpose of this step is to divide the plasmablasts according to
-their unsupervised clustering. The cluster 6 cells will be separated
+their unsupervised clustering. The proliferating cluster cells will be separated
 from the other cells, and called, respectively, "Proliferating plasmablasts"
 and "Non-proliferating plasmablasts".
 
@@ -54,7 +54,12 @@ table(so$pruned.labels_singleR_fine)
 
 ```{r splitting, echo=TRUE}
 g.b = so@misc$sel_res_col
-sel_cluster = "6"
+
+# Select the cluster with the lowest G1 proportion
+G1_cluster_p =
+  prop.table(table(so$Phase, so@meta.data[[g.b]]), margin=2)["G1",]
+sel_cluster = names(G1_cluster_p[which.min(G1_cluster_p)])[[1]]
+print(paste0("Proliferating cells cluster: ", sel_cluster))
 
 so$pruned.labels_singleR_fine.mod <- so$pruned.labels_singleR_fine
 so$pruned.labels_singleR_fine.mod <-
