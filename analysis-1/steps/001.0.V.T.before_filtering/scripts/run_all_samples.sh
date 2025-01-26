@@ -8,9 +8,9 @@ n_threads=14
 
 function run_sample { local SAMPLE=$1
   echo "Running sample $SAMPLE"
-  ln -s -f create_so.Rmd create_so.$SAMPLE.Rmd
-  knit2html create_so.$SAMPLE.Rmd sample=$SAMPLE
-  rm -f create_so.$SAMPLE.Rmd
+  ln -s -f before_filtering.Rmd before_filtering.$SAMPLE.Rmd
+  knit2html before_filtering.$SAMPLE.Rmd sample=$SAMPLE
+  rm -f before_filtering.$SAMPLE.Rmd
   echo "Finished sample $SAMPLE"
 }
 export -f run_sample

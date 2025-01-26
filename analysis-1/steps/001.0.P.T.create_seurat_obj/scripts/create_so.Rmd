@@ -14,8 +14,11 @@ params:
 knitr::opts_chunk$set(message=F, warning=F, echo=F)
 .libPaths(c(params$libpath, .libPaths()))
 
-library(Seurat)
+library(SingleCellExperiment)
 library(scater)
+library(celldex)
+library(SingleR)
+library(Seurat)
 library(robustbase)
 
 if (is.na(params$sample)) {
@@ -65,7 +68,8 @@ data <- Read10X_h5(filename = h5_fname)
 ```
 
 ```{r create_so}
-so_name <- paste0(params$sample, "_so")
+so_name <- paste0("TC_SC03_S", sub("_", "", sub("sample_", "", params$sample)),
+                  "_so")
 so <- CreateSeuratObject(counts = data, project = so_name,
                          min.cells = 0, min.features = 0)
 rm(data)
@@ -96,6 +100,10 @@ filt_ad <- data.frame(
     isOutlier(qcstats$subsets_Mito_percent, log = FALSE, type = "higher")
 )
 qcstats <- cbind(as.data.frame(qcstats), filt_ad)
+# rename sum to scater_qcstats_sum
+colnames(qcstats)[colnames(qcstats) == "sum"] <- "scater_qcstats_sum"
+# rename detected to scater_qcstats_detected
+colnames(qcstats)[colnames(qcstats) == "detected"] <- "scater_qcstats_detected"
 so@meta.data <- cbind(so@meta.data, qcstats)
 ```
 
@@ -115,6 +123,7 @@ so$multi.outlier <- multi.outlier
 
 ```{r rm_redundant_qc}
 so@meta.data <- so@meta.data[,c("orig.ident","nCount_RNA","nFeature_RNA",
+                                "scater_qcstats_sum","scater_qcstats_detected",
                                 "subsets_Mito_sum","subsets_Mito_detected",
                                 "percent.mito","percent.mito.cl","qc.lib.low",
                                 "qc.lib.high","qc.nexprs.low","qc.nexprs.high",
@@ -124,7 +133,7 @@ so@meta.data <- so@meta.data[,c("orig.ident","nCount_RNA","nFeature_RNA",
 # VDJ info
 
 ```{r fetching_vdj_info}
-vdj_info <- read.csv(file = paste0(sample_data_dir, "/per_sample_outs",
+vdj_info <- read.csv(file = paste0(sample_data_dir, "per_sample_outs/",
                                    params$sample, "/vdj_t/",
                                    "filtered_contig_annotations.csv"),
                      stringsAsFactors = FALSE)
@@ -137,6 +146,14 @@ so$has_prod_vdj <- rownames(so@meta.data) %in% vdj_info$barcode
 so <- test_cell_cycle_effect(so, so_name,
                              s_genes = cc.genes.updated.2019$s.genes,
                              g2m_genes = cc.genes.updated.2019$g2m.genes)
+```
+
+# CD3 positivity
+
+```{r CD3_positivity}
+so$CD3_plus <- so@assays$RNA$counts["CD3E",] > 0 |
+               so@assays$RNA$counts["CD3D",] > 0 |
+               so@assays$RNA$counts["CD3G",] > 0
 ```
 
 # Saving

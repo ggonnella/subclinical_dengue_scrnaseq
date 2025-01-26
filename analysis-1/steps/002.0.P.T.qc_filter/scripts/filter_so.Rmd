@@ -1,5 +1,5 @@
 ---
-title: "InDen T cells | Individual samples | SO creation and QC"
+title: "InDen T cells | Individual samples | SO filtering by QC"
 author: "Giorgio Gonnella; Sebastien Mella"
 date: "2024-03-27"
 output:
@@ -8,6 +8,7 @@ params:
   pfx: "/srv/baia/"
   libpath: "/home/giorgio/R-pkg-Seurat5/"
   sample: NA
+  manual_filter_selection: TRUE
 ---
 
 ```{r setup, echo=FALSE, include=FALSE}
@@ -25,6 +26,8 @@ library(ggbeeswarm)
 library(parallel)
 library(robustbase)
 library(viridis)
+library(SingleR)
+library(celldex)
 
 if (is.na(params$sample)) {
   stop("Please provide a sample name")
@@ -62,40 +65,56 @@ so <- readRDS(paste0(input_var_dir, params$sample, "_so_initial.rds"))
 ## Filter by nGenes, nUMIs and percent.mito
 
 ```{r set_min_nGenes_thresholds}
-if (params$sample %in% c("sample_1_T", "sample_2_T", "sample_3_T", "sample_4_T",
-                         "sample_5_T", "sample_10_T", "sample_13_T")) {
-  min_nGenes <- 500
-} else if (params$sample %in% c("sample_6_T", "sample_7_T", "sample_8_T",
-                                "sample_9_T", "sample_11_T", "sample_12_T")) {
-  min_nGenes <- ceiling(attr(so@meta.data$qc.nexprs.low, "thresholds")["lower"])
-} else { # "sample_14_T"
-  min_nGenes <- min(so$nFeature_RNA)
-}
-```
+min_nGenes <- ceiling(attr(so@meta.data$qc.nexprs.low, "thresholds")["lower"])
+max_nGenes <- 4000
 
-```{r set_max_nGenes_thresholds}
-if (params$sample %in% c("sample_1_T", "sample_2_T", "sample_3_T", "sample_4_T",
-                         "sample_10_T", "sample_13_T", "sample_6_T",
-                         "sample_7_T", "sample_8_T", "sample_9_T",
-                         "sample_11_T", "sample_12_T")) {
-  max_nGenes <- 4000
-} else if (params$sample %in% c("sample_5_T")) {
-  max_nGenes <- 6500
-} else { # "sample_14_T"
-  max_nGenes <- max(so$nFeature_RNA)
+#
+# Parameter selection based on the "scater_qcstats_detected" QC plot
+#
+if (params$manual_filter_selection) {
+  if (params$sample %in% c("sample_1_T", "sample_2_T", "sample_3_T",
+                           "sample_4_T", "sample_5_T", "sample_10_T",
+                           "sample_13_T")) {
+    min_nGenes <- 500
+  } else if (params$sample %in% c("sample_6_T", "sample_7_T", "sample_8_T",
+                                  "sample_9_T", "sample_11_T", "sample_12_T")) {
+    min_nGenes <- ceiling(attr(so@meta.data$qc.nexprs.low,
+                               "thresholds")["lower"])
+  } else { # "sample_14_T"
+    min_nGenes <- min(so$nFeature_RNA)
+  }
+
+  if (params$sample %in% c("sample_1_T", "sample_2_T", "sample_3_T",
+                           "sample_4_T", "sample_10_T", "sample_13_T",
+                           "sample_6_T", "sample_7_T", "sample_8_T",
+                           "sample_9_T", "sample_11_T", "sample_12_T")) {
+    max_nGenes <- 4000
+  } else if (params$sample %in% c("sample_5_T")) {
+    max_nGenes <- 6500
+  } else { # "sample_14_T"
+    max_nGenes <- max(so$nFeature_RNA)
+  }
 }
 ```
 
 ```{r set_nUMI_thresholds}
-if (params$sample %in% c("sample_14_T")) {
-  min_nUMI <- min(so$nCount_RNA)
-  max_nUMI <- max(so$nCount_RNA)
-} else if (params$sample %in% c("sample_6_T")){
-  min_nUMI <- 1000
-  max_nUMI <- 50000
-} else {
-  min_nUMI <- 1000
-  max_nUMI <- 20000
+min_nUMI <- 1000
+max_nUMI <- 20000
+
+#
+# Parameter selection based on the "scater_qcstats_sum" QC plot
+#
+if (params$manual_filter_selection) {
+  if (params$sample %in% c("sample_14_T")) {
+    min_nUMI <- min(so$nCount_RNA)
+    max_nUMI <- max(so$nCount_RNA)
+  } else if (params$sample %in% c("sample_5_T", "sample_6_T")){
+    min_nUMI <- 1000
+    max_nUMI <- 50000
+  } else {
+    min_nUMI <- 1000
+    max_nUMI <- 20000
+  }
 }
 ```
 
@@ -103,43 +122,133 @@ if (params$sample %in% c("sample_14_T")) {
 max_pmito <- 0.1
 ```
 
-```{r subset1_nGenes_nUMIs_based}
+```{r store_pre_filtering_stats}
+so@misc$qc_filtering = list()
+so@misc$qc_filtering$nCells = ncol(so)
+so@misc$qc_filtering$nGenes = c(min_nGenes, max_nGenes)
+so@misc$qc_filtering$nUMIs = c(min_nUMI, max_nUMI)
+so@misc$qc_filtering$pmito = max_pmito
+so@misc$qc_filtering$nCells_failing_nGenes =
+  count(so$nFeature_RNA > min_nGenes & so$nFeature_RNA < max_nGenes)
+so@misc$qc_filtering$nCells_failing_nUMIs =
+  count(so$nCount_RNA > min_nUMI & so$nCount_RNA < max_nUMI)
+so@misc$qc_filtering$nCells_failing_pmito = count(so$percent.mito <= max_pmito)
+so@misc$qc_filtering$nCells_failing_VDJ = count(!so$has_prod_vdj)
+so@misc$qc_filtering$nCells_failing_multi_outliers = count(so$multi.outlier)
+so@misc$qc_filtering$nCells_failing_CD3 = count(!so$CD3_plus)
+```
+
+```{r filter_by_nGenes_nUMIs_pmito}
 so <- subset(so, subset = nCount_RNA > min_nUMI & nCount_RNA < max_nUMI &
              nFeature_RNA > min_nGenes & nFeature_RNA < max_nGenes &
              percent.mito <= max_pmito)
 so$percent.mito.cl <- droplevels(so$percent.mito.cl)
 ```
 
-## Filter by CD3 / CD8 positivity
+## Filter by CD3 positivity
 
-```{r}
-mat_exp <- as.data.frame(t(as.matrix(so@assays$RNA$counts)))
-bctokeep <- rownames(mat_exp)[!(mat_exp$CD3E > 0 |
-                                mat_exp$CD3D > 0 |
-                                mat_exp$CD3G > 0)]
-so <- subset(so, cells = bctokeep)
+```{r filter_by_cd3}
+so <- subset(so, subset = CD3_plus == TRUE)
 ```
 
 ## Filter by VDJ availability
 
-```{r}
-use_vdj_filter_samples =
-  c("sample_1_T", "sample_6_T", "sample_7_T", "sample_8_T",
-    "sample_9_T", "sample_11_T", "sample_12_T")
+```{r filter_by_vdj}
+use_vdj_filter_samples = c()
+so@misc$qc_filtering$VDJ_applied = F
+
+#if (params$manual_filter_selection)
+#  # decided depending on the proportion of cells without VDJ
+#  use_vdj_filter_samples =
+#    c("sample_1_T", "sample_6_T", "sample_7_T", "sample_8_T",
+#      "sample_9_T", "sample_11_T", "sample_12_T")
 
 if (params$sample %in% use_vdj_filter_samples) {
   so <- subset(so, subset = has_prod_vdj == TRUE)
+  so@misc$qc_filtering$VDJ_applied = T
 }
 ```
 
 ## Filter multi-outliers
 
-```{r subset outlier}
-keep_outliers_samples = c("sample_3_T", "sample_5_T", "sample_14_T")
+```{r filter_multioutliers}
+keep_outliers_samples = c()
+so@misc$qc_filtering$multi_outliers_applied = F
+
+#if (params$manual_filter_selection)
+#  # decided depending on the proportion of multi-outliers cells
+#  keep_outliers_samples = c("sample_3_T", "sample_5_T", "sample_14_T")
 
 if (! params$sample %in% keep_outliers_samples) {
   so <- subset(so, subset = multi.outlier == FALSE)
+  so@misc$qc_filtering$multi_outliers_applied = T
 }
+```
+
+## Filter by cell type
+
+### SingleR
+
+```{r singleR}
+ref <- celldex::MonacoImmuneData()
+sce <- SingleCellExperiment(assays = list(counts = so@assays$RNA$counts))
+sce <- scater::logNormCounts(sce)
+
+# preparing pred main
+main_pred <- SingleR(test = sce, ref = ref, labels = ref$label.main,
+                     assay.type.test = "logcounts")
+main_pred_tab <- as.data.frame(main_pred$scores[,
+                   colnames(main_pred$scores)%in%unique(main_pred$labels)])
+main_pred_tab$pruned.labels <- main_pred$pruned.labels
+colnames(main_pred_tab) <-
+  paste(colnames(main_pred_tab), "singleR_main", sep = "_")
+rownames(main_pred_tab) <- rownames(main_pred)
+
+# preparing pred fine
+fine_pred <- SingleR(test = sce, ref = ref, labels = ref$label.fine,
+                     assay.type.test = "logcounts")
+fine_pred_tab <- as.data.frame(fine_pred$scores[,
+                   colnames(fine_pred$scores)%in%unique(fine_pred$labels)])
+fine_pred_tab$pruned.labels <- fine_pred$pruned.labels
+colnames(fine_pred_tab) <-
+  paste(colnames(fine_pred_tab), "singleR_fine", sep = "_")
+rownames(fine_pred_tab) <- rownames(fine_pred)
+
+# integrating into seurat meta data
+so@meta.data <- cbind(so@meta.data, main_pred_tab, fine_pred_tab)
+if (count(is.na(so$pruned.labels_singleR_main)) > 0)
+  so$pruned.labels_singleR_main[is.na(so$pruned.labels_singleR_main)] <- "unchar"
+print(sort(table(so$pruned.labels_singleR_main), decreasing = TRUE))
+if (count(is.na(so$pruned.labels_singleR_fine)) > 0)
+  so$pruned.labels_singleR_fine[is.na(so$pruned.labels_singleR_fine)] <- "unchar"
+print(sort(table(so$pruned.labels_singleR_fine), decreasing = T))
+
+lev_main <- names(sort(table(so$pruned.labels_singleR_main), decreasing = TRUE))
+if (count(is.na(so$pruned.labels_singleR_main)) > 0)
+  lev_main <- c(lev_main[-which(lev_main == "unchar")], "unchar")
+so$pruned.labels_singleR_main <- factor(so$pruned.labels_singleR_main,
+                                        levels = lev_main)
+
+lev_fine <- names(sort(table(so$pruned.labels_singleR_fine), decreasing = TRUE))
+if (count(is.na(so$pruned.labels_singleR_fine)) > 0)
+  lev_fine <- c(lev_fine[-which(lev_fine == "unchar")], "unchar")
+so$pruned.labels_singleR_fine <- factor(so$pruned.labels_singleR_fine,
+                                        levels = lev_fine)
+```
+
+### Filter
+
+```{r filter_by_celltype}
+so@misc$qc_filtering$nCells_failing_singleR =
+  count(!so$pruned.labels_singleR_main %in%
+        c("CD4+ T cells", "CD8+ T cells", "T cells"))
+so@misc$qc_filtering$celltypes_main_before_celltype_filter =
+  table(so$pruned.labels_singleR_main)
+so@misc$qc_filtering$celltypes_fine_before_celltype_filter =
+  table(so$pruned.labels_singleR_fine)
+so@misc$qc_filtering$nCells_before_celltype_filter = ncol(so)
+so <- subset(so, subset = pruned.labels_singleR_main %in%
+               c("CD4+ T cells", "CD8+ T cells", "T cells"))
 ```
 
 # Saving
