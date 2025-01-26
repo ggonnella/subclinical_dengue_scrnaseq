@@ -6,6 +6,7 @@ output: html_document
 params:
   pfx: "/srv/baia/"
   libpath: "/home/giorgio/R-pkg-Seurat5/"
+  input_prefilt_rdata: FALSE
 ---
 
 ```{r setup, include=FALSE}
@@ -47,29 +48,32 @@ The files are imported as a list of Seurat objects.
 ```{r importing, echo=T}
 tcells_files <- list.files(path = input_var_dir,
                            pattern = "_so_filtered.rds")
-# TODO: check that mget is not needed
 tcells_ls <- sapply(tcells_files, function(x)
                     readRDS(paste0(input_var_dir, x)))
 names(tcells_ls) <- gsub("_so_filtered.rds", "", tcells_files)
 rm(tcells_files)
 ```
 
-## Pre-processing
-
-The analysis (SCT, PCA, UMAP) is removed from the Seurat objects to avoid
-confusion after the merging. Without this step, the merging function fails.
-
-```{r remove_info}
-tcells_ls <- lapply(tcells_ls, prepare_so_merging)
-```
-
 ## Merging
+
+```{r prepare_merging}
+tcells_ls <- lapply(tcells_ls, function (so) {
+  orig.sample_id <- sub(".*S(\\d+)T.*", "\\1", so@project.name)
+  colnames(so) <- paste0(colnames(so), "_", orig.sample_id)
+  DefaultAssay(so) <- "RNA"
+  return(so)
+})
+```
 
 The Seurat objects for the individual samples are merged
 into one Seurat object, using the `merge()` function.
 
 ```{r merging, echo=TRUE}
 so <- merge(x = tcells_ls[[1]], y = tcells_ls[-1], project = "tcells")
+if (so_version(so) == "5") {
+  so <- JoinLayers(so)
+}
+
 rm(list = (c("tcells_ls")))
 ```
 
@@ -77,7 +81,6 @@ The samples in the merged object are ordered by sample number.
 
 ```{r sample_ordering, echo=TRUE}
 so$orig.ident <- factor(so$orig.ident,
-# TODO: change this part to reflect name sample_X_B
                         levels = paste0("TC_SC03_S", 1:14, "T_so"))
 so$sample <- sub(".*(S\\d+T).*", "\\1", so$orig.ident)
 ```
@@ -85,7 +88,6 @@ so$sample <- sub(".*(S\\d+T).*", "\\1", so$orig.ident)
 Add clinical condition metadata.
 
 ```{r add_clinical_condition, echo=TRUE}
-# TODO: change this part to reflect name sample_X_B
 conditions <- c("Hospitalized", "Subclinical")
 hosp_n = as.character(1:7)
 so$clinical_condition <-
@@ -103,7 +105,6 @@ of cells with high MT genes.
 Sample 14 is removed, since it contains very few cells and sequences overall.
 
 ```{r datasets_filtering}
-# TODO: change this part to reflect name sample_X_B
 print(paste0("Number of samples before filtering: ", ncol(so)))
 so <- subset(x = so, subset = orig.ident != "TC_SC03_S4T_so")
 so <- subset(x = so, subset = orig.ident != "TC_SC03_S14T_so")
@@ -126,31 +127,27 @@ so <- FindVariableFeatures(object = so, assay = "RNA",
 
 Removing unwanted source of variation in the highly variable genes
 
-```{r genesets, echo=TRUE}
-so@misc$genesets$TCR <- grep(pattern = "^TR[AB][VC]", so@assays$RNA@var.features, value = TRUE)
-so@misc$genesets$IG <- c(grep(pattern = "^IG[HLK][VDJ]", so@assays$RNA@var.features, value = TRUE),
-              c("IGHM", "IGHD", "IGHE", "IGHA[12]", "IGHG[1234]", "IGKC", "IGLC[1234567]", "AC233755.1"))
-so@misc$genesets$MT <- grep(pattern = "^MT", so@assays$RNA@var.features, value = TRUE)
-so@misc$genesets$Ribo <- grep(pattern = "^RP[LS]", so@assays$RNA@var.features, value = TRUE)
-```
-
-```{r unwanted_genes, echo=T}
-unwanted_genes <- c(so@misc$genesets$TCR,
-                    so@misc$genesets$IG,
-                    so@misc$genesets$MT,
-                    so@misc$genesets$Ribo)
-```
-
 ```{r correcting_hvg, echo=TRUE}
-hvg_corr <- so@assays$RNA@var.features[
-  !so@assays$RNA@var.features %in% unwanted_genes]
+if (params$input_prefilt_rdata) {
+  vf <- so@assays$RNA@var.features
+} else {
+  vf <- VariableFeatures(so)
+}
+
+unwanted_tcr <- grep(pattern = "^tr[ab][vc]", vf, value = true)
+unwanted_ig <- c(grep(pattern = "^ig[hlk][vdj]", vf, value = true),
+              c("ighm", "ighd", "ighe", "igha[12]", "ighg[1234]", "igkc", "iglc[1234567]", "ac233755.1"))
+unwanted_mt <- grep(pattern = "^mt", vf, value = true)
+unwanted_ribo <- grep(pattern = "^rp[ls]", vf, value = true)
+unwanted_vf <- c(unwanted_tcr, unwanted_ig, unwanted_mt, unwanted_ribo)
+hvg_corr <- vf[!vf %in% unwanted_vf]
 ```
 
 ## Scaling data
 
 ```{r scaling, echo=TRUE}
 so <- ScaleData(object = so,
-            features = so@assays$RNA@var.features,
+            features = vf,
             vars.to.regress = c("nCount_RNA", "percent.mito"),
             assay = "RNA")
 ```
