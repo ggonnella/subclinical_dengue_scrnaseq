@@ -7,7 +7,7 @@ output:
 params:
   pfx: "/srv/baia/"
   libpath: "/home/giorgio/R-pkg-Seurat5/"
-  sample: NA
+  sample: "sample_1_T"
   manual_filter_selection: TRUE
 ---
 
@@ -240,15 +240,30 @@ so$pruned.labels_singleR_fine <- factor(so$pruned.labels_singleR_fine,
 
 ```{r filter_by_celltype}
 so@misc$qc_filtering$nCells_failing_singleR =
-  count(!so$pruned.labels_singleR_main %in%
-        c("CD4+ T cells", "CD8+ T cells", "T cells"))
+  count((!so$pruned.labels_singleR_main %in%
+        c("CD4+ T cells", "CD8+ T cells", "T cells")) |
+        (!so$pruned.labels_singleR_fine %in%
+               c("Naive CD4 T cells", "Naive CD8 T cells",
+               "Effector memory CD8 T cells", "Central memory CD8 T cells",
+               "T regulatory cells", "Th1 cells", "Vd2 gd T cells",
+               "Terminal effector CD8 T cells", "Non-Vd2 gd T cells", 
+               "Th2 cells", "Follicular helper T cells", "Th1/Th17 cells",
+               "Th17 cells", "MAIT cells", "Terminal effector CD4 T cells")))
+
 so@misc$qc_filtering$celltypes_main_before_celltype_filter =
   table(so$pruned.labels_singleR_main)
 so@misc$qc_filtering$celltypes_fine_before_celltype_filter =
   table(so$pruned.labels_singleR_fine)
 so@misc$qc_filtering$nCells_before_celltype_filter = ncol(so)
-so <- subset(so, subset = pruned.labels_singleR_main %in%
-               c("CD4+ T cells", "CD8+ T cells", "T cells"))
+so <- subset(so, subset = (pruned.labels_singleR_main %in%
+               c("CD4+ T cells", "CD8+ T cells", "T cells")))
+so <- subset(so, subset = pruned.labels_singleR_fine %in%
+               c("Naive CD4 T cells", "Naive CD8 T cells",
+               "Effector memory CD8 T cells", "Central memory CD8 T cells",
+               "T regulatory cells", "Th1 cells", "Vd2 gd T cells",
+               "Terminal effector CD8 T cells", "Non-Vd2 gd T cells", 
+               "Th2 cells", "Follicular helper T cells", "Th1/Th17 cells",
+               "Th17 cells", "MAIT cells", "Terminal effector CD4 T cells"))
 ```
 
 # Saving
