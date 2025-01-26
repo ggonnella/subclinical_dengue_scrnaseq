@@ -142,11 +142,11 @@ if (params$input_prefilt_rdata) {
   vf <- VariableFeatures(so)
 }
 
-unwanted_tcr <- grep(pattern = "^tr[ab][vc]", vf, value = true)
-unwanted_ig <- c(grep(pattern = "^ig[hlk][vdj]", vf, value = true),
-              c("ighm", "ighd", "ighe", "igha[12]", "ighg[1234]", "igkc", "iglc[1234567]", "ac233755.1"))
-unwanted_mt <- grep(pattern = "^mt", vf, value = true)
-unwanted_ribo <- grep(pattern = "^rp[ls]", vf, value = true)
+unwanted_tcr <- grep(pattern = "^TR[AB][VC]", vf, value = TRUE)
+unwanted_ig <- c(grep(pattern = "^IG[HLK][VDJ]", vf, value = TRUE),
+              c("IGHM", "IGHD", "IGHE", "IGHA[12]", "IGHG[1234]", "IGKC", "IGLC[1234567]", "AC233755.1"))
+unwanted_mt <- grep(pattern = "^MT", vf, value = TRUE)
+unwanted_ribo <- grep(pattern = "^RP[LS]", vf, value = TRUE)
 unwanted_vf <- c(unwanted_tcr, unwanted_ig, unwanted_mt, unwanted_ribo)
 hvg_corr <- vf[!vf %in% unwanted_vf]
 ```
