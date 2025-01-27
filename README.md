@@ -3,8 +3,8 @@
 The analyses are perfomed using:
 - R version 4.4.2
 - 10X Cellranger v6 or v7
-- 10X enclone
-- mixcr
+- 10X enclone v0.5.219
+- mixcr v3.0.12
 - Seurat v5, Platypus and several further R libraries (see ``R_LIBRARIES`` file)
 
 # Organization
