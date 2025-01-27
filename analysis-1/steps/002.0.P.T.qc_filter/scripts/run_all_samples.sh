@@ -1,5 +1,8 @@
 #!/bin/bash
 
+THISSCRIPTDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+knit2html=$THISSCRIPTDIR/../../scripts/knit2html
+
 SAMPLES="sample_1_T sample_2_T sample_3_T sample_4_T"
 SAMPLES="$SAMPLES sample_5_T sample_6_T sample_7_T sample_8_T"
 SAMPLES="$SAMPLES sample_9_T sample_10_T sample_11_T sample_12_T"
@@ -11,7 +14,7 @@ if [ "$2" != "" ]; then PSTR="prjpath=$1 libpath=$2"; else PSTR=""; fi
 function run_sample { local SAMPLE=$1
   echo "Running sample $SAMPLE"
   ln -s -f filter_so.Rmd filter_so.$SAMPLE.Rmd
-  knit2html filter_so.$SAMPLE.Rmd sample=$SAMPLE $PSTR
+  $knit2html filter_so.$SAMPLE.Rmd sample=$SAMPLE $PSTR
   rm -f filter_so.$SAMPLE.Rmd
   echo "Finished sample $SAMPLE"
 }
