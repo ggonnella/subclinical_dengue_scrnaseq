@@ -6,7 +6,7 @@ output:
   html_document:
     theme: sandstone
 params:
-  pfx: "/srv/baia/"
+  prjpath: "/srv/baia/inden/"
   libpath: "/home/giorgio/R-pkg-Seurat5/"
 ---
 
@@ -18,8 +18,7 @@ library(Seurat)
 library(harmony)
 library(scProportionTest)
 
-prj_root <- paste0(params$pfx, "inden/")
-analysis_root <- paste0(prj_root, "analysis-1/")
+analysis_root <- paste0(params$prjpath, "analysis-1/")
 
 prev_step_dir <- paste0(analysis_root, "steps/005.0.P.T.split_CD8EM/")
 input_var_dir <- paste0(prev_step_dir, "results/vars/")
@@ -35,7 +34,7 @@ if (!dir.exists(this_step_dir)) {
 var_dir <- paste0(this_step_dir, "results/vars/")
 dir.create(var_dir, showWarnings = F, recursive = T)
 
-helpers_dir = paste0(prj_root, "helpers/")
+helpers_dir = paste0(params$prjpath, "helpers/")
 source(paste0(helpers_dir, "de_helpers.R"))
 ```
 

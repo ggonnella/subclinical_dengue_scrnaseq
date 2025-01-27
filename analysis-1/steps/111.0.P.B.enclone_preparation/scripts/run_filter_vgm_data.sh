@@ -1,7 +1,6 @@
 #!/bin/bash
 
-PARAMS_PFX="/srv/baia"
-PRJ_ROOT="$PARAMS_PFX/inden"
+PRJ_ROOT="/srv/baia/inden"
 ANALYSIS_ROOT="$PRJ_ROOT/analysis-1"
 INPUT_STEP_DIR="$ANALYSIS_ROOT/steps/111.0.P.B.enclone_preparation"
 INPUT_TABLES_DIR="$INPUT_STEP_DIR/results/tables"

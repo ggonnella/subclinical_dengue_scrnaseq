@@ -6,7 +6,7 @@ output:
   html_document:
     theme: sandstone
 params:
-  pfx: "/srv/baia/"
+  prjpath: "/srv/baia/inden/"
   libpath: "/home/giorgio/R-pkg-Seurat5/"
 ---
 
@@ -21,8 +21,7 @@ library(Organism.dplyr)
 library(fgsea)
 library(DOSE)
 
-prj_root <- paste0(params$pfx, "inden/")
-analysis_root <- paste0(prj_root, "analysis-1/")
+analysis_root <- paste0(params$prjpath, "analysis-1/")
 
 prev_step_dir <- paste0(analysis_root, "steps/007.0.P.T.compute_de/")
 input_var_dir <- paste0(prev_step_dir, "results/vars/")

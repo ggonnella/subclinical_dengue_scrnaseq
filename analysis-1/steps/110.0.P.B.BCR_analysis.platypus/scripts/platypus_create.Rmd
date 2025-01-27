@@ -6,7 +6,7 @@ output:
   html_document:
     theme: sandstone
 params:
-  pfx: "/srv/baia/"
+  prjpath: "/srv/baia/inden/"
   libpath: "/home/giorgio/R-pkg-Seurat5/"
 ---
 
@@ -17,11 +17,10 @@ knitr::opts_chunk$set(message=F, warning=F, echo=T)
 library(Platypus)
 library(dplyr)
 
-prj_root <- paste0(params$pfx, "inden/")
-analysis_root <- paste0(prj_root, "analysis-1/")
+analysis_root <- paste0(params$prjpath, "analysis-1/")
 
-vdj_counts_pfx1 <- paste0(prj_root, "data/counts/")
-vdj_counts_pfx2 <- paste0(prj_root, "data/counts2/")
+vdj_counts_pfx1 <- paste0(params$prjpath, "data/counts/")
+vdj_counts_pfx2 <- paste0(params$prjpath, "data/counts2/")
 
 input_step_dir <- paste0(analysis_root, "steps/105.0.P.B.split_plasmablasts/")
 input_var_dir <- paste0(input_step_dir, "results/vars/")
@@ -40,7 +39,7 @@ dir.create(var_dir, showWarnings = FALSE, recursive = TRUE)
 plots_dir <- paste0(this_step_dir, "results/plots/")
 dir.create(plots_dir, showWarnings = FALSE, recursive = TRUE)
 
-helpers_dir <- paste0(prj_root, "helpers/")
+helpers_dir <- paste0(params$prjpath, "helpers/")
 source(paste0(helpers_dir, "platypus_helpers.R"))
 ```
 
