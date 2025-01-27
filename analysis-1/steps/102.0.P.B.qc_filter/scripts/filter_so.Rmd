@@ -8,7 +8,7 @@ params:
   pfx: "/srv/baia/"
   libpath: "/home/giorgio/R-pkg-Seurat5/"
   sample: NA
-  manual_filter_selection: TRUE
+  sample_spec_filter_selection: TRUE
 ---
 
 ```{r setup, echo=FALSE, include=FALSE}
@@ -71,7 +71,7 @@ max_nGenes <- max(so$nFeature_RNA)
 #
 # Parameter selection based on the "scater_qcstats_detected" QC plot
 #
-if (params$manual_filter_selection) {
+if (params$sample_spec_filter_selection) {
   if (params$sample %in% c("sample_1_B", "sample_5_B")) {
     max_nGenes <- max(so$nFeature_RNA)
   } else {
@@ -87,7 +87,7 @@ max_nUMI <- max(so$nCount_RNA)
 #
 # Parameter selection based on the "scater_qcstats_sum" QC plot
 #
-if (params$manual_filter_selection) {
+if (params$sample_spec_filter_selection) {
   if (params$sample %in% c("sample_1_B", "sample_5_B")) {
     max_nUMI <- max(so$nCount_RNA)
   } else {

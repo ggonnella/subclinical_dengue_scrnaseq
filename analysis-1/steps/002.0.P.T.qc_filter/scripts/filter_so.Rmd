@@ -8,7 +8,10 @@ params:
   pfx: "/srv/baia/"
   libpath: "/home/giorgio/R-pkg-Seurat5/"
   sample: "sample_1_T"
-  manual_filter_selection: TRUE
+  sample_spec_filter_selection: TRUE
+  filter_fine_T_celltypes: FALSE
+  skip_vdj_filter: FALSE
+  never_keep_outliers: FALSE
 ---
 
 ```{r setup, echo=FALSE, include=FALSE}
@@ -71,7 +74,7 @@ max_nGenes <- 4000
 #
 # Parameter selection based on the "scater_qcstats_detected" QC plot
 #
-if (params$manual_filter_selection) {
+if (params$sample_spec_filter_selection) {
   if (params$sample %in% c("sample_1_T", "sample_2_T", "sample_3_T",
                            "sample_4_T", "sample_5_T", "sample_10_T",
                            "sample_13_T")) {
@@ -104,7 +107,7 @@ max_nUMI <- 20000
 #
 # Parameter selection based on the "scater_qcstats_sum" QC plot
 #
-if (params$manual_filter_selection) {
+if (params$sample_spec_filter_selection) {
   if (params$sample %in% c("sample_14_T")) {
     min_nUMI <- min(so$nCount_RNA)
     max_nUMI <- max(so$nCount_RNA)
@@ -157,11 +160,11 @@ so <- subset(so, subset = CD3_plus == TRUE)
 use_vdj_filter_samples = c()
 so@misc$qc_filtering$VDJ_applied = F
 
-#if (params$manual_filter_selection)
-#  # decided depending on the proportion of cells without VDJ
-#  use_vdj_filter_samples =
-#    c("sample_1_T", "sample_6_T", "sample_7_T", "sample_8_T",
-#      "sample_9_T", "sample_11_T", "sample_12_T")
+if (params$sample_spec_filter_selection & !params$skip_vdj_filter)
+  # decided depending on the proportion of cells without VDJ
+  use_vdj_filter_samples =
+    c("sample_1_T", "sample_6_T", "sample_7_T", "sample_8_T",
+      "sample_9_T", "sample_11_T", "sample_12_T")
 
 if (params$sample %in% use_vdj_filter_samples) {
   so <- subset(so, subset = has_prod_vdj == TRUE)
@@ -175,9 +178,9 @@ if (params$sample %in% use_vdj_filter_samples) {
 keep_outliers_samples = c()
 so@misc$qc_filtering$multi_outliers_applied = F
 
-#if (params$manual_filter_selection)
-#  # decided depending on the proportion of multi-outliers cells
-#  keep_outliers_samples = c("sample_3_T", "sample_5_T", "sample_14_T")
+if (params$sample_spec_filter_selection & !params$never_keep_outliers)
+  # decided depending on the proportion of multi-outliers cells
+  keep_outliers_samples = c("sample_3_T", "sample_5_T", "sample_14_T")
 
 if (! params$sample %in% keep_outliers_samples) {
   so <- subset(so, subset = multi.outlier == FALSE)
@@ -239,31 +242,33 @@ so$pruned.labels_singleR_fine <- factor(so$pruned.labels_singleR_fine,
 ### Filter
 
 ```{r filter_by_celltype}
-so@misc$qc_filtering$nCells_failing_singleR =
-  count((!so$pruned.labels_singleR_main %in%
-        c("CD4+ T cells", "CD8+ T cells", "T cells")) |
-        (!so$pruned.labels_singleR_fine %in%
-               c("Naive CD4 T cells", "Naive CD8 T cells",
-               "Effector memory CD8 T cells", "Central memory CD8 T cells",
-               "T regulatory cells", "Th1 cells", "Vd2 gd T cells",
-               "Terminal effector CD8 T cells", "Non-Vd2 gd T cells", 
-               "Th2 cells", "Follicular helper T cells", "Th1/Th17 cells",
-               "Th17 cells", "MAIT cells", "Terminal effector CD4 T cells")))
-
 so@misc$qc_filtering$celltypes_main_before_celltype_filter =
   table(so$pruned.labels_singleR_main)
 so@misc$qc_filtering$celltypes_fine_before_celltype_filter =
   table(so$pruned.labels_singleR_fine)
 so@misc$qc_filtering$nCells_before_celltype_filter = ncol(so)
-so <- subset(so, subset = (pruned.labels_singleR_main %in%
-               c("CD4+ T cells", "CD8+ T cells", "T cells")))
-so <- subset(so, subset = pruned.labels_singleR_fine %in%
-               c("Naive CD4 T cells", "Naive CD8 T cells",
-               "Effector memory CD8 T cells", "Central memory CD8 T cells",
-               "T regulatory cells", "Th1 cells", "Vd2 gd T cells",
-               "Terminal effector CD8 T cells", "Non-Vd2 gd T cells", 
-               "Th2 cells", "Follicular helper T cells", "Th1/Th17 cells",
-               "Th17 cells", "MAIT cells", "Terminal effector CD4 T cells"))
+
+main_T_celltypes = c("CD4+ T cells", "CD8+ T cells", "T cells")
+fine_T_celltypes = c("Naive CD4 T cells", "Naive CD8 T cells",
+              "Effector memory CD8 T cells", "Central memory CD8 T cells",
+              "T regulatory cells", "Th1 cells", "Vd2 gd T cells",
+              "Terminal effector CD8 T cells", "Non-Vd2 gd T cells",
+              "Th2 cells", "Follicular helper T cells", "Th1/Th17 cells",
+              "Th17 cells", "MAIT cells", "Terminal effector CD4 T cells")
+so@misc$fine_T_celltypes = fine_T_celltypes
+
+if (params$filter_fine_T_celltypes) {
+  so@misc$qc_filtering$nCells_failing_singleR =
+    count((!so$pruned.labels_singleR_main %in% main_T_celltypes) |
+          (!so$pruned.labels_singleR_fine %in% fine_T_celltypes))
+} else {
+  so@misc$qc_filtering$nCells_failing_singleR =
+    count((!so$pruned.labels_singleR_main %in% main_T_celltypes))
+}
+so <- subset(so, subset = (pruned.labels_singleR_main %in% main_T_celltypes))
+if (params$filter_fine_T_celltypes) {
+  so <- subset(so, subset = (pruned.labels_singleR_fine %in% fine_T_celltypes))
+}
 ```
 
 # Saving

@@ -62,9 +62,21 @@ sample_to_sample_name = c("S1T" = "H1",
                           "S11T" = "S4",
                           "S12T" = "S5",
                           "S13T" = "S6")
+so@misc$sample_names <- sample_to_sample_name
 so$sample_name <- factor(unname(sample_to_sample_name[so$sample]),
                          levels = c("S1", "S2", "S3", "S4", "S5", "S6",
                                     "H1", "H2", "H3", "H4", "H5", "H6"))
+```
+
+```{r samples_metadata_table}
+so@misc$samples_metadata = data.frame(sample = levels(so$sample),
+                                      orig.ident = levels(so$orig.ident))
+so@misc$samples_metadata$sample_name <- sample_to_sample_name[
+                                            so@misc$samples_metadata$sample]
+so@misc$samples_metadata$clinical_condition <-
+  factor(ifelse(substr(so@misc$samples_metadata$sample_name, 1, 1) == "H",
+                "Hospitalized", "Subclinical"),
+         levels = c("Hospitalized", "Subclinical"))
 ```
 
 # Cell types
@@ -302,17 +314,12 @@ so@misc$ctg_backcols <-
 
 # Remove outliers
 
-Remove cells in cell types with less than 10 cells and clusters with less than
+Remove cells in non-T cells fine cell types and clusters with less than
 10 cells.
 
-```{r remove_celltype_outliers, echo=TRUE}
-min_cells_per_celltype <- 10
-celltype_sizes <- table(so$pruned.labels_singleR_fine)
-small_celltypes <- names(celltype_sizes[celltype_sizes < min_cells_per_celltype])
-so$in_small_celltype <-
-  so$pruned.labels_singleR_fine %in% small_celltypes
-so <- subset(so, in_small_celltype == FALSE)
-so <- subset(so, pruned.labels_singleR_fine != "Uncharacterized")
+```{r remove_non_T_cells_singleR_fine, echo=TRUE}
+so <- subset(so, subset = (pruned.labels_singleR_fine %in%
+                           so@misc$fine_T_celltypes))
 so$pruned.labels_singleR_fine <-
   droplevels(so$pruned.labels_singleR_fine)
 so$pruned.labels_singleR_fine.abbrev <-
