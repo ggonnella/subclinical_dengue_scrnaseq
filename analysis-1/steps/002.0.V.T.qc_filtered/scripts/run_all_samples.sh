@@ -6,10 +6,12 @@ SAMPLES="$SAMPLES sample_9_T sample_10_T sample_11_T sample_12_T"
 SAMPLES="$SAMPLES sample_13_T sample_14_T "
 n_threads=14
 
+if [ "$2" != "" ]; then PSTR="prjpath=$1 libpath=$2"; else PSTR=""; fi
+
 function run_sample { local SAMPLE=$1
   echo "Running sample $SAMPLE"
   ln -s -f after_filtering.Rmd after_filtering.$SAMPLE.Rmd
-  knit2html after_filtering.$SAMPLE.Rmd sample=$SAMPLE
+  knit2html after_filtering.$SAMPLE.Rmd sample=$SAMPLE $PSTR
   rm -f after_filtering.$SAMPLE.Rmd
   echo "Finished sample $SAMPLE"
 }
