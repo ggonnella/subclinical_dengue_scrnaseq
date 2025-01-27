@@ -17,10 +17,14 @@ library(Seurat)
 
 analysis_root <- paste0(params$prjpath, "analysis-1/")
 
-prev_step_dir <- paste0(analysis_root, "steps/002.0.P.T.qc_filter/")
-input_var_dir <- paste0(prev_step_dir, "results/vars/")
-if (!dir.exists(input_var_dir)) {
-  stop("Input variable directory does not exist: ", input_var_dir)
+if (params$input_prefilt_rdata) {
+  input_var_dir <- paste0(params$prjpath, "prefiltered/T/")
+} else {
+  prev_step_dir <- paste0(analysis_root, "steps/002.0.P.T.qc_filter/")
+  input_var_dir <- paste0(prev_step_dir, "results/vars/")
+  if (!dir.exists(input_var_dir)) {
+    stop("Input variable directory does not exist: ", input_var_dir)
+  }
 }
 
 this_step_dir <- paste0(analysis_root, "steps/003.0.P.T.merging.seurat/")
@@ -45,23 +49,45 @@ object.
 The files are imported as a list of Seurat objects.
 
 ```{r importing, echo=T}
-tcells_files <- list.files(path = input_var_dir,
-                           pattern = "_so_filtered.rds")
-tcells_ls <- sapply(tcells_files, function(x)
-                    readRDS(paste0(input_var_dir, x)))
-names(tcells_ls) <- gsub("_so_filtered.rds", "", tcells_files)
+if (params$input_prefilt_rdata) {
+  tcells_files <- list.files(path = input_var_dir,
+                             pattern = "_filt.Rdata")
+  for (f in tcells_files) {
+    if (!file.exists(paste0(input_var_dir, f))) {
+      stop("File does not exist: ", paste0(input_var_dir, f))
+    }
+  }
+  tcells_ls <- sapply(tcells_files, function(x)
+                      mget(load(paste0(input_var_dir, x))))
+  names(tcells_ls) <- gsub(".Rdata", "", tcells_files)
+} else {
+  tcells_files <- list.files(path = input_var_dir,
+                             pattern = "_so_filtered.rds")
+  for (f in tcells_files) {
+    if (!file.exists(paste0(input_var_dir, f))) {
+      stop("File does not exist: ", paste0(input_var_dir, f))
+    }
+  }
+  tcells_ls <- sapply(tcells_files, function(x)
+                      readRDS(paste0(input_var_dir, x)))
+  names(tcells_ls) <- gsub("_so_filtered.rds", "", tcells_files)
+}
 rm(tcells_files)
 ```
 
 ## Merging
 
 ```{r prepare_merging}
-tcells_ls <- lapply(tcells_ls, function (so) {
-  orig.sample_id <- sub(".*S(\\d+)T.*", "\\1", so@project.name)
-  colnames(so) <- paste0(colnames(so), "_", orig.sample_id)
-  DefaultAssay(so) <- "RNA"
-  return(so)
-})
+if (params$input_prefilt_rdata) {
+  tcells_ls <- lapply(tcells_ls, prepare_so_merging)
+} else {
+  tcells_ls <- lapply(tcells_ls, function (so) {
+    orig.sample_id <- sub(".*S(\\d+)T.*", "\\1", so@project.name)
+    colnames(so) <- paste0(colnames(so), "_", orig.sample_id)
+    DefaultAssay(so) <- "RNA"
+    return(so)
+  })
+}
 ```
 
 The Seurat objects for the individual samples are merged
@@ -69,7 +95,7 @@ into one Seurat object, using the `merge()` function.
 
 ```{r merging, echo=TRUE}
 so <- merge(x = tcells_ls[[1]], y = tcells_ls[-1], project = "tcells")
-if (so_version(so) == "5") {
+if (params$input_prefilt_rdata == FALSE) {
   so <- JoinLayers(so)
 }
 
@@ -135,7 +161,8 @@ if (params$input_prefilt_rdata) {
 
 unwanted_tcr <- grep(pattern = "^TR[AB][VC]", vf, value = TRUE)
 unwanted_ig <- c(grep(pattern = "^IG[HLK][VDJ]", vf, value = TRUE),
-              c("IGHM", "IGHD", "IGHE", "IGHA[12]", "IGHG[1234]", "IGKC", "IGLC[1234567]", "AC233755.1"))
+              c("IGHM", "IGHD", "IGHE", "IGHA[12]", "IGHG[1234]",
+                "IGKC", "IGLC[1234567]", "AC233755.1"))
 unwanted_mt <- grep(pattern = "^MT", vf, value = TRUE)
 unwanted_ribo <- grep(pattern = "^RP[LS]", vf, value = TRUE)
 unwanted_vf <- c(unwanted_tcr, unwanted_ig, unwanted_mt, unwanted_ribo)
