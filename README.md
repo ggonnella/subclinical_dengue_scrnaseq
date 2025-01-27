@@ -28,7 +28,7 @@ Thereby:
 - visualization steps generate plots (in ``results/plots``) and tables
   (in ``results/tables``) but do not change the underlying data structure.
 
-# Steps naming
+## Steps naming
 
 Each step is named as follows
 ``stepnumber.versionnumber.type.celltype.description``
@@ -43,7 +43,7 @@ where:
 - celltype is either B for B cells or T for T cells
 - description is a short textual description of the step
 
-# Step organization
+## Step organization
 
 Each step is organized as follows:
 - ``scripts`` contains the scripts (in most cases, R markdown) for the step
