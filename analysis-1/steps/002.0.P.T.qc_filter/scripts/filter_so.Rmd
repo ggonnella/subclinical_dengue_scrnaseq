@@ -254,7 +254,6 @@ fine_T_celltypes = c("Naive CD4 T cells", "Naive CD8 T cells",
               "Terminal effector CD8 T cells", "Non-Vd2 gd T cells",
               "Th2 cells", "Follicular helper T cells", "Th1/Th17 cells",
               "Th17 cells", "MAIT cells", "Terminal effector CD4 T cells")
-so@misc$fine_T_celltypes = fine_T_celltypes
 
 if (params$filter_fine_T_celltypes) {
   so@misc$qc_filtering$nCells_failing_singleR =
