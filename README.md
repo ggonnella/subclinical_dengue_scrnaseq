@@ -1,23 +1,19 @@
-This repository documents the single cell RNA-seq analyses performed
-for the manuscript "Gonnella et al., 2025".
-
 # Requirements
 
 The analyses are perfomed using:
-- 10X Cellranger
-- Seurat
-- Platypus
-- some further R libraries
+- R version 4.4.2
+- 10X Cellranger v6 or v7
+- 10X enclone
+- mixcr
+- Seurat v5, Platypus and several further R libraries (see ``R_LIBRARIES`` file)
 
 # Organization
 
 The repository is organized as follows:
-- "analysis-1" original computation, analyses steps and results
+- "cellranger" are the scripts/metadata used for running Cellranger
+- "analysis-1" processing and visualization steps and results
 - "helpers" helper scripts, containing functions common to multiple steps
-- "scripts" command line scripts
-
-Note: if a revision will be necessary, "analysis-2" will be created for
-further analyses steps and results.
+- "scripts" command line scripts (e.g. to run all steps)
 
 # Processing and Visualization Steps
 
@@ -56,5 +52,37 @@ Each step is organized as follows:
 
 The scripts under scripts are symlinked into rundir and run there. The scripts
 create the results directory and store the results there.
+
+# Running the pipeline
+
+## From reads to counts: Cellranger
+
+To run Cellranger, change the ``cellranger/metadata`` files to match the paths
+to the fastq files and the reference genome. Then run the
+``cellranger/scripts/run_all.sh`` script.
+
+In alternative, Cellranger counts from GEO can be put in the
+``cellranger/results`` directory to run the pipeline from that point on.
+
+## Upstream analysis (individual samples)
+
+To run the upstream analysis, one case use the ``run_all_samples.sh`` scripts
+in the 001/002 (T cells) and 101/102 (B cells) P and V steps.
+Thereby it is necessary to specify the own paths to this repository
+(prjpath parameter) and to R library containing Seurat 5 (libpath).
+
+## Downstream analysis (merged samples)
+
+To run the Rmd files, one can use the knit2html script under scripts.
+Thereby it is necessary to specify the own paths to this repository
+(prjpath parameter) and to R library containing Seurat 5 (libpath).
+
+## Running the pipeline (upstream and downstream)
+
+The ``run_[TB]_cell_analysis.sh`` script run all the steps for the
+T and B analysis starting from the Cellranger output.
+Thereby it is necessary to specify the own paths to this repository
+(prjpath parameter) and to R library containing Seurat 5 (libpath).
+
 
 
