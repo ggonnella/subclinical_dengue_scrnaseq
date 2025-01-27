@@ -1,7 +1,7 @@
 #!/bin/bash
 
 THISSCRIPTDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-knit2html=$THISSCRIPTDIR/../../../../scripts/knit2html
+export knit2html=$(readlink -f $THISSCRIPTDIR/../../../../scripts/knit2html)
 
 SAMPLES="sample_1_B sample_3_B sample_4_B"
 SAMPLES="$SAMPLES sample_5_B sample_6_B sample_7_B sample_8_B"
