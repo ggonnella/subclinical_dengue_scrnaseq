@@ -84,5 +84,8 @@ T and B analysis starting from the Cellranger output.
 Thereby it is necessary to specify the own paths to this repository
 (prjpath parameter) and to R library containing Seurat 5 (libpath).
 
+## Collecting results
 
-
+The results of the pipeline for the manuscript figures and supplementary
+figures can be collected using the ``collect_results.sh`` script under
+``analysis-1/results``.
