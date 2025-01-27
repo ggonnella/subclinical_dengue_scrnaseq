@@ -12,15 +12,15 @@ if [ "$2" == "" ]; then
   echo "Run all the steps of the B cell analysis" > /dev/stderr
   echo "" > /dev/stderr
   echo "Usage:" > /dev/stderr
-  echo "  $0 <prefix> <Rlibpath>" > /dev/stderr
+  echo "  $0 <prjpath> <libpath>" > /dev/stderr
   echo "" > /dev/stderr
-  echo "<prefix>: path to the project directory in the local system" > /dev/stderr
+  echo "<prjpath>: path to the project directory in the local system" > /dev/stderr
   echo "" > /dev/stderr
-  echo "<Rlibpath>: path to the R library containing Seurat 5" > /dev/stderr
+  echo "<libpath>: path to the R library containing Seurat 5" > /dev/stderr
   echo "" > /dev/stderr
   exit 1
 fi
-PFX=$1
+PRJPATH=$1
 LIBPATH=$2
 
 K2H=$SCRIPT_DIR/knit2html
@@ -41,7 +41,7 @@ do
     cd -
   fi
   cd $rundir
-  ./run_all_samples.sh
+  ./run_all_samples.sh $PRJPATH $LIBPATH
   cd $PREVDIR
 done
 
@@ -95,6 +95,6 @@ do
   # if html file does not exist, run the script
   rmd_pfx=$(basename $rmd .Rmd)
   if [ ! -f $rundir/$rmd_pfx.html ]; then
-    $K2H $STEPS_DIR/$rmd pfx=$PFX libpath=$LIBPATH
+    $K2H $STEPS_DIR/$rmd prjpath=$PRJPATH libpath=$LIBPATH
   fi
 done
