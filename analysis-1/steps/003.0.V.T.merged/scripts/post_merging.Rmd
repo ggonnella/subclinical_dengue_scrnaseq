@@ -34,6 +34,23 @@ sample_cols <- colorRampPalette(brewer.pal(8, name = "Accent"))(
                   length(unique(so$orig.ident)))
 ```
 
+## Merged datasets stats
+
+```{r}
+print(so)
+```
+
+Celltypes:
+
+```{r}
+print(table(so$pruned.labels_singleR_fine, useNA="ifany"))
+```
+
+Samples:
+```{r}
+print(table(so$orig.ident, useNA="ifany"))
+```
+
 ## PCA
 
 ### Genes in PCs
