@@ -8,6 +8,7 @@ output:
 params:
   prjpath: "/srv/baia/inden/"
   libpath: "/home/giorgio/R-pkg-Seurat5/"
+  input_merged_rdata: FALSE
 ---
 
 ```{r setup, include = FALSE}
@@ -19,8 +20,12 @@ library(Seurat)
 
 analysis_root <- paste0(params$prjpath, "analysis-1/")
 
-prev_step_dir <- paste0(analysis_root, "steps/003.0.P.T.merging.seurat/")
-input_var_dir <- paste0(prev_step_dir, "results/vars/")
+if (params$input_merged_rdata) {
+  input_var_dir <- paste0(params$prjpath, "merged/T/")
+} else {
+  prev_step_dir <- paste0(analysis_root, "steps/003.0.P.T.merging.seurat/")
+  input_var_dir <- paste0(prev_step_dir, "results/vars/")
+}
 if (!dir.exists(input_var_dir)) {
   stop("Input variable directory does not exist: ", input_var_dir)
 }
@@ -38,7 +43,12 @@ source(paste0(helpers_dir, "clustering_helpers.R"))
 ```
 
 ```{r load_file, echo = FALSE}
-so <- readRDS(paste0(input_var_dir, "merged_so.rds"))
+if (params$input_merged_rdata) {
+  load(paste0(input_var_dir, "TC_SC03_alltcells.Rdata"))
+  so <- TC_SC03_alltcells
+} else {
+  so <- readRDS(paste0(input_var_dir, "merged_so.rds"))
+}
 ```
 
 In the integration step, the Harmony algorithm is used to integrate the data
