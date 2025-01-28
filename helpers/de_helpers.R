@@ -166,7 +166,7 @@ max_expression <- function(so, genes, group.by) {
 
 GEX_dotplot <- function(so, condcol, genes, cond1 = NULL, cond2 = NULL,
                         max_expr = 1, max_perc = 100, threshold.to.plot = 5,
-                        title = "") {
+                        title = "", remove_empty = T) {
   if (is.null(cond1)) {
     cond1 = levels(so@meta.data[[condcol]])[[1]]
   }
@@ -210,6 +210,11 @@ GEX_dotplot <- function(so, condcol, genes, cond1 = NULL, cond2 = NULL,
   to_plot_sum_f$condition <- factor(to_plot_sum_f$condition, levels = c(cond1, cond2))
 
   to_plot_sum_f$perc_expressing_cells[to_plot_sum_f$perc_expressing_cells < threshold.to.plot] <- NA
+
+  # remove data where both conditions have NA in perc_expressing_cells
+  if (remove_empty) {
+    to_plot_sum_f <- to_plot_sum_f[!is.na(to_plot_sum_f$perc_expressing_cells), ]
+  }
 
   plot_out <- ggplot(to_plot_sum_f, aes(x = name, y = condition,
                                         col = mean_scaled_expression,
