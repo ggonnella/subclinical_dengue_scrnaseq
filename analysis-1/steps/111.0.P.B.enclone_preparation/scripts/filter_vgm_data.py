@@ -12,6 +12,7 @@ Arguments:
 Options:
   --celltype=<ct>      Filter by specific celltype (string).
   --condition=<cond>   Filter by specific condition (string).
+  --prjpath=<path>     Paths in config TSV are relative to this directory (default: current directory).
   -v --verbose         Enable verbose output.
   -q --quiet           Suppress all output except errors.
   -h --help            Show this help message.
@@ -56,11 +57,15 @@ def collect_filtered_barcodes(vgm_data):
     logger.info("Collect filtered barcodes from VGM data")
     filtered_barcodes = defaultdict(set)
     for row in vgm_data:
+        #
+        # Barcodes are sometimes repeated in samples, thus they are saved in a
+        # dictionary with the sample as key
+        #
         filtered_barcodes[row["sample"]].add(row["barcode"])
     return filtered_barcodes
 
 
-def load_annotations(config_file):
+def load_annotations(config_file, prjpath):
     """Load and merge annotations from JSON files."""
     logger.info(f"Load annotations listed in configuration file {config_file}")
     sample_data = {}
@@ -69,7 +74,7 @@ def load_annotations(config_file):
             sample, json_file = line.strip().split("\t")
             logger.info(\
                 f"Load annotations for sample {sample} from file {json_file}")
-            with open(json_file, "r") as file:
+            with open(prjpath+"/"+json_file, "r") as file:
                 sample_data[sample] = json.load(file)
     logger.info(f"Loaded annotations for {len(sample_data)} samples")
     return sample_data
@@ -79,7 +84,7 @@ def output_filtered_annotations(filtered_barcodes, annotations):
     """Filter annotations based on barcodes and sample and output."""
 
     logger.info("Output filtered annotations")
-    # Output the beginning of the JSON array:
+    # Beginning of the JSON array:
     sys.stdout.write("[\n")
     first_elem = True
 
@@ -94,14 +99,14 @@ def output_filtered_annotations(filtered_barcodes, annotations):
                 record.pop('info')
                 sys.stdout.write(json.dumps(record))
 
-    # Output the end of the JSON array:
+    # End of the JSON array:
     sys.stdout.write("\n]\n")
 
 
-def main(vgmdata, config_file, celltype=None, condition=None):
+def main(vgmdata, config_file, celltype, condition, prjpath):
     vgm_data = load_vgmdata(vgmdata, celltype, condition)
     filtered_barcodes = collect_filtered_barcodes(vgm_data)
-    annotation_data = load_annotations(config_file)
+    annotation_data = load_annotations(config_file, prjpath)
     output_filtered_annotations(filtered_barcodes, annotation_data)
 
 
@@ -114,4 +119,5 @@ if __name__ == "__main__":
         config_file=args["<config>"],
         celltype=args["--celltype"],
         condition=args["--condition"],
+        prjpath=args["--prjpath"],
     )

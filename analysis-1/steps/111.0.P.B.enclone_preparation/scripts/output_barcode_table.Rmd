@@ -73,6 +73,7 @@ system(paste0("python3 ",
               this_step_dir, "scripts/filter_vgm_data.py ",
               tables_dir, "vgm.tsv ",
               metadata_file, " ",
+              "--prjpath ", params$prjpath, " ",
               "--verbose ",
               "> ", json_dir, "all_contig_annotations.json"))
 ```
