@@ -19,10 +19,14 @@ library(Seurat)
 
 analysis_root <- paste0(params$prjpath, "analysis-1/")
 
-prev_step_dir <- paste0(analysis_root, "steps/102.0.P.B.qc_filter/")
-input_var_dir <- paste0(prev_step_dir, "results/vars/")
+if (params$input_prefilt_rdata) {
+  input_var_dir <- paste0(params$prjpath, "prefiltered/B/")
+} else {
+  prev_step_dir <- paste0(analysis_root, "steps/102.0.P.B.qc_filter/")
+  input_var_dir <- paste0(prev_step_dir, "results/vars/")
+}
 if (!dir.exists(input_var_dir)) {
-  stop("Input variable directory does not exist: ", input_var_dir)
+stop("Input variable directory does not exist: ", input_var_dir)
 }
 
 this_step_dir <- paste0(analysis_root, "steps/103.0.P.B.merging.seurat/")
@@ -47,22 +51,43 @@ The files are imported as a list of Seurat objects.
 
 ```{r importing, echo=TRUE}
 if (params$input_prefilt_rdata) {
-  stop("Re-implement this copying from version tagged v1")
+  bcells_files <- list.files(path = input_var_dir,
+                             pattern = "_Bcells.Rdata")
+  for (f in bcells_files) {
+    if (!file.exists(paste0(input_var_dir, f))) {
+      stop("File does not exist: ", paste0(input_var_dir, f))
+    }
+  }
+  bcells_ls <- sapply(bcells_files, function(x)
+                      mget(load(paste0(input_var_dir, x))))
+  names(bcells_ls) <- gsub("_Bcells.Rdata", "", bcells_files)
+} else {
+  bcells_files <- list.files(path = input_var_dir,
+                             pattern = "_so_filtered.rds")
+  for (f in bcells_files) {
+    if (!file.exists(paste0(input_var_dir, f))) {
+      stop("File does not exist: ", paste0(input_var_dir, f))
+    }
+  }
+  bcells_ls <- sapply(bcells_files, function(x)
+                      readRDS(paste0(input_var_dir, x)))
+  names(bcells_ls) <- gsub("_so_filtered.rds", "", bcells_files)
 }
-bcells_files <- list.files(path = input_var_dir,
-                           pattern = "_so_filtered.rds")
-bcells_ls <- sapply(bcells_files, function(x)
-                    readRDS(paste0(input_var_dir, x)))
-names(bcells_ls) <- gsub("_so_filtered.rds", "", bcells_files)
 rm(bcells_files)
 ```
 
 ## Filtering
 
-Sample 10 is removed because of the low number of cells.
+Sample 2, 3, 4, 10 and 14 are removed because of low quality.
 
 ```{r datasets_filtering}
-exclude <- c("sample_10_B")
+if (params$input_prefilt_rdata) {
+  exclude <- c("TC_SC03_S2B", "TC_SC03_S3B", "TC_SC03_S4B", "TC_SC03_S10B",
+               "TC_SC03_S14B")
+} else {
+  exclude <- c("sample_2_B", "sample_3_B", "sample_4_B", "sample_10_B",
+               "sample_14_B")
+}
 keep <- setdiff(names(bcells_ls), exclude)
 bcells_ls <- bcells_ls[keep]
 ```
@@ -70,12 +95,24 @@ bcells_ls <- bcells_ls[keep]
 ## Merging
 
 ```{r prepare_merging}
-bcells_ls <- lapply(bcells_ls, function (so) {
-  orig.sample_id <- sub(".*S(\\d+)B.*", "\\1", so@project.name)
-  colnames(so) <- paste0(colnames(so), "_", orig.sample_id)
-  DefaultAssay(so) <- "RNA"
-  return(so)
-})
+if (params$input_prefilt_rdata) {
+  bcells_ls <- lapply(bcells_ls, prepare_so_merging_Seurat4)
+} else {
+  bcells_ls <- lapply(bcells_ls, function (so) {
+    orig.sample_id <- sub(".*S(\\d+)B.*", "\\1", so@project.name)
+    colnames(so) <- paste0(colnames(so), "_", orig.sample_id)
+    DefaultAssay(so) <- "RNA"
+    return(so)
+  })
+}
+
+print(names(bcells_ls))
+print(unlist(lapply(bcells_ls, function(so) {
+  table(so$orig.ident, useNA="ifany")
+})))
+print(lapply(bcells_ls, function(so) {
+  ncol(so)
+}))
 ```
 
 The Seurat objects for the individual samples are merged
@@ -83,7 +120,7 @@ into one Seurat object, using the `merge()` function.
 
 ```{r merging, echo=TRUE}
 so <- merge(x = bcells_ls[[1]], y = bcells_ls[-1], project = "bcells")
-if (so_version(so) == "5") {
+if (params$input_prefilt_rdata == FALSE) {
   so <- JoinLayers(so)
 }
 
@@ -93,10 +130,12 @@ rm(list = (c("bcells_ls")))
 The samples in the merged object are ordered by sample number.
 
 ```{r sample_ordering, echo=TRUE}
-so$orig.ident[
-      so$orig.ident == "sample_15_B_so"] <- "TC_SC03_S15B_so"
-so$orig.ident[
-      so$orig.ident == "sample_16_B_so"] <- "TC_SC03_S16B_so"
+if (params$input_prefilt_rdata) {
+  so$orig.ident[
+        so$orig.ident == "sample_15_B_so"] <- "TC_SC03_S15B_so"
+  so$orig.ident[
+        so$orig.ident == "sample_16_B_so"] <- "TC_SC03_S16B_so"
+}
 so$orig.ident <- factor(so$orig.ident, levels = c("TC_SC03_S1B_so",
                                                   "TC_SC03_S5B_so",
                                                   "TC_SC03_S6B_so",
@@ -109,13 +148,14 @@ so$orig.ident <- factor(so$orig.ident, levels = c("TC_SC03_S1B_so",
                                                   "TC_SC03_S15B_so",
                                                   "TC_SC03_S16B_so"))
 so$sample <- sub(".*(S\\d+B).*", "\\1", so$orig.ident)
+table(so$orig.ident, useNA="ifany")
 ```
 
 Add clinical condition metadata.
 
 ```{r add_clinical_condition, echo=TRUE}
 conditions <- c("Hospitalized", "Subclinical")
-hosp_n = c("1", "2", "3", "5", "6", "7", "15", "16")
+hosp_n = c("1", "5", "6", "7", "15", "16")
 so$clinical_condition <-
   ifelse(so$orig.ident %in% paste0("TC_SC03_S", hosp_n, "B_so"),
          conditions[1], conditions[2])
@@ -145,7 +185,8 @@ if (params$input_prefilt_rdata) {
 
 unwanted_tcr <- grep(pattern = "^TR[AB][VC]", vf, value = TRUE)
 unwanted_ig <- c(grep(pattern = "^IG[HLK][VDJ]", vf, value = TRUE),
-              c("IGHM", "IGHD", "IGHE", "IGHA[12]", "IGHG[1234]", "IGKC", "IGLC[1234567]", "AC233755.1"))
+              c("IGHM", "IGHD", "IGHE", "IGHA[12]", "IGHG[1234]", "IGKC",
+                "IGLC[1234567]", "AC233755.1"))
 unwanted_mt <- grep(pattern = "^MT", vf, value = TRUE)
 unwanted_ribo <- grep(pattern = "^RP[LS]", vf, value = TRUE)
 unwanted_vf <- c(unwanted_tcr, unwanted_ig, unwanted_mt, unwanted_ribo)

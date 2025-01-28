@@ -2,7 +2,9 @@
 title: "InDen T cells | Merging individual samples to a single Seurat object"
 author: "Giorgio Gonnella"
 date: 2024-04-24
-output: html_document
+output:
+  html_document:
+    theme: sandstone
 params:
   prjpath: "/srv/baia/inden/"
   libpath: "/home/giorgio/R-pkg-Seurat5/"
@@ -22,9 +24,9 @@ if (params$input_prefilt_rdata) {
 } else {
   prev_step_dir <- paste0(analysis_root, "steps/002.0.P.T.qc_filter/")
   input_var_dir <- paste0(prev_step_dir, "results/vars/")
-  if (!dir.exists(input_var_dir)) {
-    stop("Input variable directory does not exist: ", input_var_dir)
-  }
+}
+if (!dir.exists(input_var_dir)) {
+  stop("Input variable directory does not exist: ", input_var_dir)
 }
 
 this_step_dir <- paste0(analysis_root, "steps/003.0.P.T.merging.seurat/")
