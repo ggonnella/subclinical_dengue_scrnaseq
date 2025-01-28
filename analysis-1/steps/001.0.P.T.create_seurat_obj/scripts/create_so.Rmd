@@ -16,8 +16,6 @@ knitr::opts_chunk$set(message=F, warning=F, echo=F)
 
 library(SingleCellExperiment)
 library(scater)
-library(celldex)
-library(SingleR)
 library(Seurat)
 library(robustbase)
 

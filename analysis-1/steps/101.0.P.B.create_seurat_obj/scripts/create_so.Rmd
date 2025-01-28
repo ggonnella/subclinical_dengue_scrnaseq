@@ -18,8 +18,6 @@ knitr::opts_chunk$set(message=F, warning=F, echo=F)
 library(Seurat)
 library(scater)
 library(robustbase)
-library(SingleR)
-library(celldex)
 
 if (is.na(params$sample)) {
   stop("Please provide a sample name")
