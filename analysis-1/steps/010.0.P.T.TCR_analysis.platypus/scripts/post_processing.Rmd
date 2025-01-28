@@ -72,7 +72,7 @@ Thus we will fix the barcode column to be the same as the names.
 The VDJ\_avail and GEX\_avail columns are already correctly computed.
 
 ```{r fix_barcodes}
-vgm[["GEX"]]$barcode = names(vgm[["GEX"]]$barcode)
+vgm[["GEX"]]$barcode = names(vgm[["GEX"]]$orig.ident)
 ```
 
 ## Add sample names
