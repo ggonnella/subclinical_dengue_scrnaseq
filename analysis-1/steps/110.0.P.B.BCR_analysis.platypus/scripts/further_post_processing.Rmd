@@ -118,7 +118,8 @@ for (ct in cell_types) {
   results <-
     gene_usage_signif(vgm_HL$VDJ, celltype = ct,
                       celltype_column = "pruned.labels_singleR_fine.mod",
-                      genesets = c("VH_VL_pairing"))
+                      genesets = c("VH_VL_pairing"),
+                      n_permutations = 10000)
   if (!is.null(results) && nrow(results) > 0) {
     cell_type_results <- rbind(cell_type_results, results)
   }
@@ -151,7 +152,9 @@ plasmablasts <- subset(vgm_HL$VDJ,
 plasmablasts$celltype = droplevels(plasmablasts$celltype)
 results <- gene_usage_signif(plasmablasts, celltype = "Hospitalized",
                              celltype_column = "clinical_condition",
-                             group_column = "celltype", n_permutations = 1000)
+                             group_column = "celltype",
+                             genesets = c("VH_VL_pairing"),
+                             n_permutations=10000)
 signif_results <- results[results$p_adj < 0.05, ]
 
 vgm_HL$GEX@misc$gene_pairings$hpb_all <- results

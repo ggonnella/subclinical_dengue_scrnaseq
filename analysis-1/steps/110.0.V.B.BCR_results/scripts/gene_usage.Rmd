@@ -361,7 +361,7 @@ for (celltype in unique(vgm[["VDJ"]]$celltype)) {
                                stratum_label_threshold = 0.02,
                                stratum_label_size_prop_factor = 0)
     celltype_sanitized <- gsub("[^[:alnum:]]", "_", celltype)
-    fname = paste0(plots_dir, "B.VH_VH_pairings.",
+    fname = paste0(plots_dir, "B.VH_VL_pairings.",
                    celltype_sanitized, ".svg")
     ggsave(fname, plt, device = "svg", width=6, height=9)
     print(plt)
@@ -376,7 +376,7 @@ plt <- gene_usage_alluvial(vgm_HL[["VDJ"]], "VDJ_vgene", "VJ_vgene",
                            celltype_col = "pruned.labels_singleR_fine",
                            grp1 = "Subclinical", grp2 = "Hospitalized",
                            min_clonotype_frequency = 2,
-                           left_lbl_pfx = "TRBV", right_lbl_pfx = "TRAV",
+                           left_lbl_pfx = "IGHV", right_lbl_pfx = "IG",
                            signif_pairs = signif_pairs[["Plasmablasts"]],
                            stratum_label_size = 2.8,
                            stratum_label_threshold = 0.02,
@@ -390,7 +390,7 @@ print(plt)
 plt <- gene_usage_alluvial(vgm_HL[["VDJ"]], "VDJ_vgene", "VJ_vgene",
                            left_lbl = "IGHV", right_lbl = "IGLV/IGKV",
                            grp1 = "Subclinical", grp2 = "Hospitalized",
-                           left_lbl_pfx = "TRBV", right_lbl_pfx = "TRAV",
+                           left_lbl_pfx = "IGHV", right_lbl_pfx = "IG",
                            min_clonotype_frequency=2,
                            signif_pairs = signif_pairs$Total,
                            stratum_label_size=2.8,
@@ -401,7 +401,7 @@ ggsave(fname, plt, device = "svg", width=6, height=9)
 print(plt)
 ```
 
-```{r, fig.height=12, fig.width=8}
+```{r, fig.height=18, fig.width=8}
 plasmablasts <- subset(vgm_HL$VDJ,
                        celltype %in% c("Proliferating plasmablasts",
                                        "Non-proliferating plasmablasts"))
@@ -415,11 +415,11 @@ plt <- gene_usage_alluvial(plasmablasts, "VDJ_vgene", "VJ_vgene",
                            min_clonotype_frequency=2,
                            left_lbl_pfx = "IGHV", right_lbl_pfx = "IG",
                            signif_pairs = signif_pairs_hpb,
-                           stratum_label_size = 3,
-                           stratum_label_threshold = 0,
+                           stratum_label_size = 2.8,
+                           stratum_label_threshold = 0.015,
                            stratum_label_size_prop_factor = 0)
 fname = paste0(plots_dir, "B.VH_VL_pairings.HPb.svg")
-ggsave(fname, plt, device = "svg", width=6, height=14)
+ggsave(fname, plt, device = "svg", width=6, height=13.5)
 print(plt)
 ```
 
