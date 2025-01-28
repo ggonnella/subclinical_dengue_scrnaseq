@@ -185,17 +185,14 @@ function fig6 {
   getplot 107.0.V.B.de_results dotplots/B.de_genes_dotplot.Switched_memory_B_cells.svg \
     Fig6 Fig6F.3.svg
   n_missing=$[n_missing+$?]
-  getplot 107.0.V.B.de_results dotplots/B.de_genes_dotplot.Plasmablasts.svg \
+  getplot 107.0.V.B.de_results dotplots/B.de_genes_dotplot.Proliferating_plasmablasts.svg \
     Fig6 Fig6F.4.svg
   n_missing=$[n_missing+$?]
-  getplot 107.0.V.B.de_results dotplots/B.de_genes_dotplot.Proliferating_plasmablasts.svg \
+  getplot 107.0.V.B.de_results dotplots/B.de_genes_dotplot.Non-proliferating_plasmablasts.svg \
     Fig6 Fig6F.5.svg
   n_missing=$[n_missing+$?]
-  getplot 107.0.V.B.de_results dotplots/B.de_genes_dotplot.Non-proliferating_plasmablasts.svg \
-    Fig6 Fig6F.6.svg
-  n_missing=$[n_missing+$?]
   getplot 107.0.V.B.de_results dotplots/B.de_genes_dotplot.Exhausted_B_cells.svg \
-    Fig6 Fig6F.7.svg
+    Fig6 Fig6F.6.svg
   n_missing=$[n_missing+$?]
   fig_report $fig $n_missing
 }
@@ -204,7 +201,7 @@ function fig7 {
   fig=Fig7
   echo "=== $fig ==="
   n_missing=0
-  # TODO: vertical order of the dots, can it be done automatically?
+  # TODO: vertical order of the dots depends on clonotype size, can it be done automatically?
   getplot 110.0.V.B.BCR_results B.clonotype_size_umapharm.svg \
     Fig7 Fig7A.svg
   n_missing=$[n_missing+$?]
@@ -235,12 +232,10 @@ function fig7 {
   getplot 110.0.V.B.BCR_results SHM_boxplot.H.Plasmablasts_pr_vs_nonpr.svg \
     Fig7 Fig7F.svg
   n_missing=$[n_missing+$?]
-  # TODO: check differences in signif
   getplot 110.0.V.B.BCR_results B.VH_VL_pairings.HPb.svg \
     Fig7 Fig7G.svg
   n_missing=$[n_missing+$?]
-  # TODO: PDF: fix
-  getplot 110.0.V.B.BCR_results most_freq_CDR3s_aa.vdj.pdf \
+  getplot 110.0.V.B.BCR_results most_freq_CDR3s_aa.vdj.svg \
     Fig7 Fig7H.svg
   n_missing=$[n_missing+$?]
   fig_report $fig $n_missing
@@ -269,7 +264,6 @@ function figS5 {
   fig=FigS5
   echo "=== $fig ==="
   n_missing=0
-  # TODO: check diff in .1.
   getplot 010.0.V.T.TCR_results T.most_freq_CDR3aa.VDJ.by_sample.CD4__Naive.svg \
     FigS5 FigS5.1.svg
   n_missing=$[n_missing+$?]
@@ -332,36 +326,40 @@ function figS7 {
   getplot 110.0.V.B.BCR_results SHM_boxplot.Switched_memory_B_cells.svg \
     FigS7 FigS7A.3.svg
   n_missing=$[n_missing+$?]
-  getplot 110.0.V.B.BCR_results B.VH_VL_pairings.HPb.svg \
-    Fig7 Fig7G.svg
+  getplot 110.0.V.B.BCR_results B.VH_VL_pairings.Non_switched_memory_B_cells.svg \
+    FigS7 FigS7B.svg
   n_missing=$[n_missing+$?]
-  # TODO: missing
-  #  FigS7 FigS7B.svg
-  n_missing=$[n_missing+1]
   fig_report $fig $n_missing
 }
 
-echo "#### T cells analysis main figures ####"
-echo
-fig1
-fig2
-fig4
-fig5
-echo
+if [ "$1" != "B" ]; then
+  echo "#### T cells analysis main figures ####"
+  echo
+  fig1
+  fig2
+  fig4
+  fig5
+  echo
+fi
 
-echo "#### B cells analysis main figures ####"
-echo
-fig6
-fig7
-echo
+if [ "$1" != "T" ]; then
+  echo "#### B cells analysis main figures ####"
+  echo
+  fig6
+  fig7
+  echo
+fi
 
-echo "#### T cells analysis supplementary figures ####"
-echo
-figS4
-figS5
-figS6
-echo
+if [ "$1" != "B" ]; then
+  echo "#### T cells analysis supplementary figures ####"
+  echo
+  figS4
+  figS5
+  figS6
+  echo
+fi
 
-echo "#### B cells analysis supplementary figures ####"
-figS7
-
+if [ "$1" != "T" ]; then
+  echo "#### B cells analysis supplementary figures ####"
+  figS7
+fi
