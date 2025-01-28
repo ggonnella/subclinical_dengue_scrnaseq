@@ -71,21 +71,29 @@ in the 001/002 (T cells) and 101/102 (B cells) P and V steps.
 Thereby it is necessary to specify the own paths to this repository
 (prjpath parameter) and to R library containing Seurat 5 (libpath).
 
-## Downstream analysis (merged samples)
+## Upstream analysis (merged samples) and downstream analysis (after Harmony)
 
 To run the Rmd files, one can use the knit2html script under scripts.
 Thereby it is necessary to specify the own paths to this repository
 (prjpath parameter) and to R library containing Seurat 5 (libpath).
 
-## Running the pipeline (upstream and downstream)
+## Running the pipeline
 
 The ``run_[TB]_cell_analysis.sh`` script run all the steps for the
 T and B analysis starting from the Cellranger output.
 Thereby it is necessary to specify the own paths to this repository
 (prjpath parameter) and to R library containing Seurat 5 (libpath).
 
+## Running downstream analyses only
+
+The downstream analyses can be run by setting the ``import_integrated_rdata``
+parameter to TRUE when running the ``harmony_post_processing.Rmd`` scripts of
+step 007 (T cells) /107 (B cells), storing the integrated data in a
+directory called ``integrated/T`` and ``integrated/B`` respectively, and
+running all steps from that script onwards.
+
 ## Collecting results
 
 The results of the pipeline for the manuscript figures and supplementary
-figures can be collected using the ``collect_results.sh`` script under
-``analysis-1/results``.
+figures can be collected after running the pipeline
+using the ``collect_results.sh`` script under ``analysis-1/results``.
