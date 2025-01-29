@@ -48,7 +48,7 @@ so <- readRDS(file = paste0(input_var_dir, "integrated_so.rds"))
 
 ```{r umap, fig.align="center", echo=FALSE, fig.width=12, fig.height=6}
 DimPlot(object = so, reduction = "umapharm",
-        group.by = "sample",
+        group.by = "sample", split.by = "clinical_condition",
         cols = so@misc$sample_cols) +
   ggtitle("UMAP plot, colored by sample")
 ```
@@ -71,7 +71,7 @@ Basic metrics projected onto the UMAP space
 
 ```{r umap_basic_metrics, fig.align="center", echo=F}
 DimPlot(object = so, reduction = "umapharm", group.by = "Phase",
-            cols = so@misc$phase_cols) +
+        split.by = "clinical_condition", cols = so@misc$phase_cols) +
   ggtitle("UMAP plot, colored by phase")
 ```
 
@@ -85,6 +85,7 @@ print(paste0("Selected clustering resolution: ",
 ```{r umap_clustering, fig.align="center", fig.width=12, fig.height=6, echo=F}
 DimPlot(object = so, reduction = "umapharm",
         group.by = so@misc$sel_res_col, label = TRUE,
+        split.by = "clinical_condition",
         cols = so@misc$cluster_cols) +
   ggtitle("UMAP plot, colored by cluster")
 ```
@@ -130,6 +131,7 @@ SingleR fine cell type annotations
 ```{r umap_singleR_fine, fig.width=12, fig.height=6, echo=F}
 plt <- DimPlot(object = so, reduction = "umapharm",
         group.by = "pruned.labels_singleR_fine",
+        split.by = "clinical_condition",
         cols = so@misc$fctype_cols, label = F, repel = TRUE) +
   ggtitle("UMAP plot, colored by cell type")
 fname <- paste0(plots_outdir, "umap.celltypes.svg")
