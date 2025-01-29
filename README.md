@@ -53,7 +53,7 @@ Each step is organized as follows:
 The scripts under scripts are symlinked into rundir and run there. The scripts
 create the results directory and store the results there.
 
-# Running the pipeline
+# Running the analysis
 
 ## From reads to counts: Cellranger
 
@@ -61,10 +61,22 @@ To run Cellranger, change the ``cellranger/metadata`` files to match the paths
 to the fastq files and the reference genome. Then run the
 ``cellranger/scripts/run_all.sh`` script.
 
-In alternative, Cellranger counts from GEO can be put in the
-``cellranger/results`` directory to run the pipeline from that point on.
+## Running the R analysis pipeline
 
-## Running single steps
+The R analysis pipeline is organized in steps, which can be run individually
+or in sequence. The input to the pipeline is the output of Cellranger, which
+is stored in the ``cellranger/results`` directory.
+
+### Running from Cellranger counts
+
+To run the pipeline from the Cellranger results, instead of running Cellrager,
+these must be put in the
+``cellranger/results`` directory
+and the correct directory structure must be re-created. Thereby .h5 files must
+be put in directories under results named
+``sample_(n)_[TB]/per_sample_outs/sample_1_[TB]/count/`` and the .csv files
+must be put in directories under results named
+``sample_(n)_[TB]/multi/vdj_[TB]/``.
 
 ### Upstream analysis (individual samples)
 
@@ -86,9 +98,7 @@ under a new directory called rundir, and run the scripts from there.
 When running the scripts it is necessary to specify the own paths to this
 repository (prjpath parameter) and to R library containing Seurat 5 (libpath).
 
-## Running the pipeline
-
-### Running all analyses, including secondary steps
+### Running all steps (including secondary steps)
 
 The ``run_[TB]_cell_analysis.sh`` script run all the steps for the
 T and B analysis starting from the Cellranger output.
@@ -103,7 +113,7 @@ The steps necessary to generate the figures for the manuscript can be run
 using the ``run_minimal_[BT]_from_counts.sh`` scripts, located in the
 steps directory.
 
-### Running downstream analyses only
+### Running downstream analyses only (after Harmony integration)
 
 The downstream analyses necessary for to generate the figures can be run by
 storing the integrated data in a directory called ``integrated/T`` and
