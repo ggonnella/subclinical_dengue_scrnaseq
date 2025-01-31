@@ -5,7 +5,7 @@ date: "2024-03-27"
 output:
   html_document: default
 params:
-  prjpath: "/srv/baia/inden/"
+  prjpath: "/srv/baia/prj/subclinical_dengue_scrnaseq/"
   libpath: "/home/giorgio/R-pkg-Seurat5/"
   sample: "sample_1_T"
   sample_spec_filter_selection: TRUE

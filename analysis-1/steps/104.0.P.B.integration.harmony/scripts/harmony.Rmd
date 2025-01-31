@@ -6,7 +6,7 @@ output:
   html_document:
     theme: sandstone
 params:
-  prjpath: "/srv/baia/inden/"
+  prjpath: "/srv/baia/prj/subclinical_dengue_scrnaseq/"
   libpath: "/home/giorgio/R-pkg-Seurat5/"
   input_merged_rdata: FALSE
 ---

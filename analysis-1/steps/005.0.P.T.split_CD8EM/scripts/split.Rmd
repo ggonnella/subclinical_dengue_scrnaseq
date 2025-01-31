@@ -7,7 +7,7 @@ output:
     clean: FALSE
     theme: sandstone
 params:
-  prjpath: "/srv/baia/inden/"
+  prjpath: "/srv/baia/prj/subclinical_dengue_scrnaseq/"
   libpath: "/home/giorgio/R-pkg-Seurat5/"
 ---
 

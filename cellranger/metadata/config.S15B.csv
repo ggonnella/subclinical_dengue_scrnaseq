@@ -1,9 +1,9 @@
 [gene-expression]
-reference,/srv/immunology/refdata/cellranger/refdata-gex-GRCh38-2020-A/
+reference,/srv/baia/refdata/cellranger/refdata-gex-GRCh38-2020-A/
 include-introns,false
 [vdj]
-reference,/srv/immunology/refdata/cellranger/refdata-cellranger-vdj-GRCh38-alts-ensembl-5.0.0
+reference,/srv/baia/refdata/cellranger/refdata-cellranger-vdj-GRCh38-alts-ensembl-5.0.0
 [libraries]
 fastq_id,fastqs,feature_types
-S15_B_GEX,/srv/immunology/inden/input/reads/AACN2MWM5_AACV5VVM5_concat,Gene Expression
-S15_B_VDJ,/srv/immunology/inden/input/reads/AACN2MWM5_AACV5VVM5_concat,VDJ-B
+S15_B_GEX,/srv/baia/prj/subclinical_dengue_scrnaseq/input/reads/AACN2MWM5_AACV5VVM5_concat,Gene Expression
+S15_B_VDJ,/srv/baia/prj/subclinical_dengue_scrnaseq/input/reads/AACN2MWM5_AACV5VVM5_concat,VDJ-B
