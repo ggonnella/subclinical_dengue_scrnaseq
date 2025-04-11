@@ -63,8 +63,6 @@ DimPlot(object = so, reduction = "umapharm",
         group.by = "sample", cols = so@misc$sample_cols,
         split.by = "sample", ncol = 3) +
   NoLegend() +
-  geom_hline(yintercept = 0, linetype = "dashed", color = "orange1") +
-  geom_vline(xintercept = 0, linetype = "dashed", color = "orange1") +
   ggtitle("UMAP plot, splitted by sample")
 ```
 
@@ -143,8 +141,6 @@ DimPlot(object = so, reduction = "umapharm",
         cols = so@misc$fctype_cols, label = F, repel = TRUE,
         split.by = "sample", ncol = 3) +
   NoLegend() +
-  geom_hline(yintercept = 0, linetype = "dashed", color = "orange1") +
-  geom_vline(xintercept = 0, linetype = "dashed", color = "orange1") +
   ggtitle("UMAP plot, colored by cell type, splitted by sample")
 ```
 
@@ -187,10 +183,24 @@ ggplot(celltype_df_fr, aes(x = sample_id, y = percentage))+
 ### Proportion test
 
 ```{r proportion_plot, fig.width=8, fig.height=8, echo=F}
+backcols <- c("CD4+"="#ddffdd", "CD8+"="#eeaa99", "Other"="#e6aadd")
+
+so$severity <- as.character(so$clinical_condition)
+so$severity[so$sample_name %in% c("H1", "H2", "H5")] <- "DF"
+so$severity[so$sample_name %in% c("H3", "H6")] <- "DWWS"
+so$severity[so$sample_name == "H4"] <- "SD"
+table(so$severity)
+
+point_color_palette <- c("Subclinical" = "blue",
+                        "DF" = "darkgreen", "DWWS" = "goldenrod",
+                        "SD" = "red")
+
 plt <- grouped_combined_permutation_test_plot(so, so@misc$proptest,
             "pruned.labels_singleR_fine.abbrev", "cell_group",
-            "clinical_condition", "Clinical Condition", so@misc$cond_cols,
-            so@misc$ctg_backcols)
+            "clinical_condition", "Clinical Condition", c("white", "white"),
+            backcols, point_color_col = "severity",
+            point_color_title = "Severity", point_color_palette = point_color_palette,
+            barplot_log_scale = T)
 
 fname <- paste0(plots_outdir, "singleR_proportion_test.svg")
 ggsave(fname, plot = plt, device = "svg")

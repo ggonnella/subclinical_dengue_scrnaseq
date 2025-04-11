@@ -37,6 +37,7 @@ dir.create(tables_dir, showWarnings = FALSE, recursive = TRUE)
 
 helpers_dir = paste0(params$prjpath, "helpers/")
 source(paste0(helpers_dir, "de_helpers.R"))
+source(paste0(helpers_dir, "combined_proportion_plot.R"))
 ```
 
 ```{r load_input_data}
@@ -115,10 +116,38 @@ FeaturePlot(EM_cells, features = "MKI67",reduction = "umapharm",
 
 # Cell types proportions
 
-```{r, fig.width=6, fig.height=3}
-plt <- permutation_plot(EM_cells@misc$prop_test)
+```{r, fig.width=6, fig.height=4}
+
+add_severity <- function(so) {
+  so$severity <- as.character(so$clinical_condition)
+  so$severity[so$sample_name %in% c("H1", "H2", "H5")] <- "DF"
+  so$severity[so$sample_name %in% c("H3", "H6")] <- "DWWS"
+  so$severity[so$sample_name == "H4"] <- "SD"
+  return(so)
+}
+
+# add a new metadata column with severity
+EM_cells <- add_severity(EM_cells)
+table(EM_cells$severity)
+
+# palette with dark blue for severity "Sublinical" and different levels
+# of red for severity "DF", more intense "DWWS", more intense "SD":
+point_color_palette <- c("Subclinical" = "blue",
+                        "DF" = "darkgreen", "DWWS" = "darkgoldenrod",
+                        "SD" = "red")
+
+subclusters_cols <- c("0" = "#e41a1c", "1" = "#934864", "2" = "#4277ad",
+                     "3" = "#3f918b", "4" = "#4aa858")
+
+plt <- combined_permutation_test_plot(EM_cells, EM_cells@misc$prop_test, "seurat_clusters",
+                                 "clinical_condition", point_color_col = "severity",
+                                 point_color_palette = point_color_palette,
+                                 point_color_title = "Severity",
+                                 perm_point_color_by_celltype = T,
+                                 perm_point_color_title = "Subcluster",
+                                 perm_point_color_palette = subclusters_cols, coord_flip = T)
 fname <- paste0(plots_dir, "isolated_CD8EM.celltype_proportions.svg")
-ggsave(filename = fname, plot = plt, device = "svg", width=12, height=6)
+ggsave(filename = fname, plot = plt, device = "svg", width=4.3, height=3.5)
 plt
 ```
 
