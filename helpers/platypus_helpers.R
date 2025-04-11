@@ -874,14 +874,12 @@ create_isotype_distribution_plot <- function(vgm,
                                              group_col = "clinical_condition",
                                              celltype_col = "celltype",
                                              isotype_cols = NA) {
-  clinical_condition <- vgm[["VDJ"]][[group_col]]
-  vdj_cgene <- vgm[["VDJ"]]$VDJ_cgene
-  celltypes <- vgm[["VDJ"]][[celltype_col]]
+  require(tibble)
 
-  data <- data.frame(
-    clinical_condition = clinical_condition,
-    vdj_cgene = vdj_cgene,
-    celltype = celltypes
+  data <- tibble(
+    !!group_col := vgm[["VDJ"]][[group_col]],
+    vdj_cgene = vgm[["VDJ"]]$VDJ_cgene,
+    celltype = vgm[["VDJ"]][[celltype_col]]
   )
 
   if (!is.na(sel_celltype)) {
@@ -907,17 +905,22 @@ create_isotype_distribution_plot <- function(vgm,
   data_summary <- data %>%
     group_by(.data[[group_col]], isotype) %>%
     summarize(count = n(), .groups = "drop")
-
-  chi_square_test <- chisq.test(table(data[[group_col]], data$isotype))
-
-  significance_level <- ""
-  if (chi_square_test$p.value < 0.001) {
-    significance_level <- "***"
-  } else if (chi_square_test$p.value < 0.01) {
-    significance_level <- "**"
-  } else if (chi_square_test$p.value < 0.05) {
-    significance_level <- "*"
+  
+  n_groups <- length(unique(data[[group_col]]))
+  if (n_groups == 2) {
+    chi_square_test <- chisq.test(table(data[[group_col]], data$isotype))
+    significance_level <- ""
+    if (chi_square_test$p.value < 0.001) {
+      significance_level <- "***"
+    } else if (chi_square_test$p.value < 0.01) {
+      significance_level <- "**"
+    } else if (chi_square_test$p.value < 0.05) {
+      significance_level <- "*"
+    } else {
+      significance_level <- "-"
+    }
   } else {
+    chi_square_test <- NULL
     significance_level <- "-"
   }
 
