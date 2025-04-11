@@ -135,7 +135,19 @@ for (celltype in levels(vgm$VDJ$pruned.labels_singleR_fine)) {
   ggsave(filename, plot, device = "svg", width = 10, height = 10)
 }
 ```
-
+```{r, fig.width=20, fig.height=5}
+for (celltype in levels(vgm$VDJ$pruned.labels_singleR_fine)) {
+  print(celltype)
+  plot <- create_isotype_distribution_plot(vgm, sel_celltype = celltype,
+                            celltype_col = "pruned.labels_singleR_fine",
+                            group_col = "sample_name")
+  print(plot)
+  celltype_sanitized <- gsub(" ", "_", celltype)
+  filename <- paste0(plots_dir, "heavy_chain_Cgene_group_", celltype_sanitized,
+                     ".by_sample.svg")
+  ggsave(filename, plot, device = "svg", width = 10, height = 10)
+}
+```
 ## V gene
 
 ### V gene group on UMAP
