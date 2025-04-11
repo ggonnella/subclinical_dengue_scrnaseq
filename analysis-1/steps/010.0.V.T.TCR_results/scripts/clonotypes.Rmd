@@ -252,21 +252,21 @@ for (celltype in c("CD8+ EM")) {
 }
 ```
 
-```{r, fig.height=8, fig.width=4}
+```{r, fig.height=8, fig.width=10}
 for (celltype in unique(vgm[["VDJ"]]$celltype.abbrev)) {
   plt <- cmp_clonotype_size_plot(vgm, relative=T, ident="celltype.abbrev",
-                               group = "clinical_condition.abbrev",
+                               group = "sample_name",
                                bin_cols = vgm$GEX@misc$clonotype_size_bin_cols,
-                               sel_celltype = celltype,  compute_pval = T,
+                               sel_celltype = celltype,  compute_pval = F,
                                hide_legend=T)
   celltype_sanitized <- gsub("[^[:alnum:]]", "_", celltype)
-  fname <- paste0(plots_dir, "T.", celltype_sanitized, "_clonotype_size.svg")
+  fname <- paste0(plots_dir, "T.", celltype_sanitized, "_clonotype_size.samples.svg")
   ggsave(fname, plt, device = "svg", width=4, height=8)
   print(plt)
 }
 ```
 
-```{r}
+```{r eval=F}
 for (celltype in unique(vgm[["VDJ"]]$celltype.abbrev)) {
   plt <- celltype_cmp_clonotype_size_plot(vgm, celltype,
                                    vgm$GEX@misc$sample_cond_table,
