@@ -277,7 +277,7 @@ mods_permplot <- list(theme(axis.text.y = element_text(size = 8),
                               "Non-sw.mem." = "Non-switched B mem.",
                               "Naive" = "Naive B cells")))
 mods_barplot <- list(theme(axis.text.x.bottom = element_text(size = 8)))
-                      
+
 plt <- combined_permutation_test_plot(so, so@misc$proptest_mod,
             "pruned.labels_singleR_fine.mod.abbrev", "clinical_condition",
             "Clinical Condition", c("white", "white"),
@@ -286,11 +286,7 @@ plt <- combined_permutation_test_plot(so, so@misc$proptest_mod,
             barplot_log_scale = T, coord_flip = T, mods_permplot = mods_permplot,
             mods_barplot = mods_barplot)
 
-# Rename X-axis labels in the left plot of the combined plot:
-
-fname <- paste0(plots_outdir, "singleR_proportion_test.svg")
-library(svglite)
-#ggsave(fname, plot = plt, device = "svg", width = 6, height = 4)
+fname <- paste0(plots_outdir, "singleR_proportion_test.pdf")
 ggsave(fname, plot = plt, device = "pdf", width = 6, height = 4)
 plt
 ```
