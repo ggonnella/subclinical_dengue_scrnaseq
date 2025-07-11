@@ -69,7 +69,7 @@ is stored in the ``cellranger/results`` directory.
 
 ### Running from Cellranger counts
 
-To run the pipeline from the Cellranger results, instead of running Cellrager,
+To run the pipeline from the Cellranger results, instead of running Cellranger,
 these must be put in the
 ``cellranger/results`` directory
 and the correct directory structure must be re-created. Thereby .h5 files must
