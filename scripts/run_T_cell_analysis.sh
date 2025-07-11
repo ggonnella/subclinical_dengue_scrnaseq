@@ -9,7 +9,7 @@ ANALYSIS_DIR=$PRJ_DIR/analysis-1
 STEPS_DIR=$ANALYSIS_DIR/steps
 
 if [ "$2" == "" ]; then
-  echo "Run all the steps of the B cell analysis" > /dev/stderr
+  echo "Run all the steps of the T cell analysis" > /dev/stderr
   echo "" > /dev/stderr
   echo "Usage:" > /dev/stderr
   echo "  $0 <prjpath> <libpath>" > /dev/stderr
